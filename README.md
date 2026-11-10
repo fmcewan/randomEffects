@@ -11,7 +11,7 @@ You can install the development version of randomEffects from [GitHub](https://g
 
 ```r
 # install.packages("pak")
-pak::pak("fmcewan/masters")
+pak::pak("fmcewan/randomEffects")
 ```
 
 ## Example
