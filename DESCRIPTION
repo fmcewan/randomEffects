@@ -3,10 +3,10 @@ Title: Random Effects Modelling and Estimation in R
 Version: 0.0.0.9000
 Authors@R: 
     person("Fraser", "McEwan", email="fjm29@st-andrews.ac.uk", role = c("aut", "cre"))
-    person()
-    person()
-    person()
-    person()
+    person("Helena", "Rothery", email="harr1@st-andrews.ac.uk", role=c("aut"))
+    person("Robin", "Ferguson", email="", role=c("aut"))
+    person("Francois", "Janse van Rensburg", email="lfjvr1@st-andrews.ac.uk", role=c("aut"))
+    person("Andrea", "Totaro", email="aat21@st-andrews.ac.uk", role=c("aut"))
 Description: A project for implementing, fitting and evaluating randon effects models.
 License: MIT + file LICENSE
 Config/roxygen2/version: 8.1.1
