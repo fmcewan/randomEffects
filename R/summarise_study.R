@@ -105,14 +105,29 @@ measure <- function(results) {
 #' @export
 summarise_study <- function(results) {
   
-  #Check column names are as expected from simulation study - this can be changed
-  req_names<-c("replicate number","number of clusters","size of clusters","true parameter values","estimation method","estimated intercept","slope","standard deviation","standard errors","converged","time","error") #hard code
-  missing<-setdiff(req_names,names(results))
+  # check required columns (agreed with simulation output)
+  req_names <- c("rep", "m", "sigma", "method", "param", "true", "est",
+                 "se", "lower", "upper", "converged", "time")
+  missing <- setdiff(req_names, names(results))
   
-  if (length(missing)>0){
-    stop(paste(missing, collapse = ", "))
+  if (length(missing) > 0) {
+    stop("Missing required columns: ", paste(missing, collapse = ", "))
+  }
+  
+  # split into scenarios
+  groups <- split(results, results[c("m", "sigma", "method", "param")], drop = TRUE)
+  
+  # measures for each scenario, with labels
+  rows <- lapply(groups, function(g) {
+    labels <- g[1, c("m", "sigma", "method", "param")]
+    cbind(labels, measure(g))
+  })
+  
+  # stack into one data frame
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
   }
   
   
   
-}
