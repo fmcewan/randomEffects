@@ -1,7 +1,7 @@
 # Validation method 
 validate_method <- function(method) {
   
-  if (!is.character(method) || is.na(method)) {
+  if (!is.character(method) || length(method) != 1 || is.na(method)) {
     stop("Invalid method name.")  
   }
 
@@ -10,13 +10,11 @@ validate_method <- function(method) {
 # cluster_loglik and marginal_loglik
 cluster_loglik <- function(theta, cd, method, K, draws) {
 
-  methods <- c("gh", "laplace", "agh", "is")
-
   validate_method(method)
 
   result <- switch(
     method, 
-    "gh" = gauss_hermite(theta, cd, K),
+    "gh" = gauss_hermite(n),
     "laplace" = laplace(theta, cd),
     "agh" = adaptive_gauss_hermite(theta, cd, K),
     "is" = importance_sampling(theta, cd, draws),
