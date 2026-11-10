@@ -68,7 +68,7 @@ measure <- function(results) {
 #'     \item{true}{True value of the parameter.}
 #'     \item{est}{Estimated value.}
 #'     \item{se}{Model-based standard error of the estimate.}
-#'     \item{lower, upper}{Lower and upper bounds of the 95\% confidence interval.}
+#'     \item{lower, upper}{Lower and upper bounds of the 95% confidence interval.}
 #'     \item{converged}{Logical; did the fit converge?}
 #'     \item{time}{Time taken to fit, in seconds.}
 #'   }
@@ -81,7 +81,7 @@ measure <- function(results) {
 #'     \item{bias, bias_mcse}{Bias, mean(est - true), and its MCSE.}
 #'     \item{emp_se, emp_se_mcse}{Empirical standard error, sd(est), and its MCSE.}
 #'     \item{mse, mse_mcse}{Mean squared error and its MCSE.}
-#'     \item{coverage, coverage_mcse}{Proportion of 95\% CIs containing the
+#'     \item{coverage, coverage_mcse}{Proportion of 95% CIs containing the
 #'       true value, and its MCSE.}
 #'   }
 #'
