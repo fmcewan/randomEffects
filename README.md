@@ -1,4 +1,3 @@
-
 # randomEffects
 
 <!-- badges: start -->
@@ -10,7 +9,7 @@ The goal of randomEffects is to ...
 
 You can install the development version of randomEffects from [GitHub](https://github.com/) with:
 
-``` r
+```r
 # install.packages("pak")
 pak::pak("fmcewan/masters")
 ```
@@ -19,9 +18,7 @@ pak::pak("fmcewan/masters")
 
 This is a basic example which shows you how to solve a common problem:
 
-``` r
+```r
 library(randomEffects)
 ## basic example code
 ```
-
-# randomEffects
