@@ -7,11 +7,12 @@ validate_method <- function(method) {
 
 }
 
-# cluster_loglik and marginal_loglik
-cluster_loglik <- function(theta, cd, method, K, draws) {
+# cluster_loglik
+cluster_loglik <- function(theta, cd, method, K=NULL, draws=NULL) {
 
   validate_method(method)
 
+  # TODO: Replace placeholders with the actual functions to call
   result <- switch(
     method, 
     "gh" = gauss_hermite(n),
@@ -25,3 +26,9 @@ cluster_loglik <- function(theta, cd, method, K, draws) {
 
 }
 
+# marginal_loglik
+marginal_loglik <- function(theta, cd, method, K=NULL, draws=NULL) {
+    sum(cluster_loglik(theta, cd, method, K, draws))
+}
+
+# fit_rint
