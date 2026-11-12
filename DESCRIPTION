@@ -1,21 +1,22 @@
 Package: randomEffects
 Title: Random Effects Modelling and Estimation in R
 Version: 0.0.0.9000
-Authors@R: 
-    person("Fraser", "McEwan", email="fjm29@st-andrews.ac.uk", role = c("aut", "cre"))
-    person("Helena", "Rothery", email="harr1@st-andrews.ac.uk", role=c("aut"))
-    person("Robin", "Ferguson", email="rfw1@st-andrews.ac.uk", role=c("aut"))
-    person("Francois", "Janse van Rensburg", email="lfjvr1@st-andrews.ac.uk", role=c("aut"))
-    person("Andrea", "Totaro", email="aat21@st-andrews.ac.uk", role=c("aut"))
+Authors@R: c(
+       person("Fraser", "McEwan", email="fjm29@st-andrews.ac.uk", role = c("aut", "cre")),
+       person("Helena", "Rothery", email="harr1@st-andrews.ac.uk", role=c("aut")),
+       person("Robin", "Ferguson", email="rfw1@st-andrews.ac.uk", role=c("aut")),
+       person("Francois", "Janse van Rensburg", email="lfjvr1@st-andrews.ac.uk", role=c("aut")),
+       person("Andrea", "Totaro", email="aat21@st-andrews.ac.uk", role=c("aut")))
 Description: A project for implementing, fitting and evaluating randon effects models.
 License: MIT + file LICENSE
 Config/roxygen2/version: 8.1.1
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Suggests: 
-    glmnet,
+    lme4,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Imports: 
+    numDeriv,
     stats,
     utils
