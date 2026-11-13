@@ -15,8 +15,11 @@ source("raw_data/group_data.R")
 gp <- group_data(group)
 
 
-#start by setting the glm model
-glm_fit <- glm(attended~age,family=binomial,data=gp)
+f_glm <- function(train, test) {
+  fit <- glm(attended ~ age, family = binomial, data = train) #fit model
+  p <- predict(fit, test, type = "response") #predict model on test dataset
+  sum(dbinom(test$attended, 1, p, log = TRUE)) #let log-lik be the error measure
+}
 
 #we compare to random intercept model selected by sim study
 ##
@@ -25,27 +28,24 @@ glm_fit <- glm(attended~age,family=binomial,data=gp)
 ##
 
 
+#adapted from lecture 12
 
-#code adapted from lecture 12
+cross_validation <- function(data, K = 5,f) {
+  
+  practices <- unique(data$practice)
+  fold_of <- sample(rep(1:K, length.out = length(practices)))   # fold per practice
+  names(fold_of) <- practices
+  data$fold <- fold_of[as.character(data$practice)]             # each patient gets their practice's fold
+  
+  fold_score <- numeric(K)
+  for (k in 1:K) {
+    train <- data[data$fold != k, ]
+    test  <- data[data$fold == k, ]
+    fold_score[k] <- f(train, test)       # f fits on train, returns held-out log-lik on test
+  }
+  c(cv=mean(fold_score), se = stats::sd(fold_score) / sqrt(K))
+}
+
 set.seed(2026)
+s_glmcross_validation(data=gp,f=f_glm)
 
-practices <- unique(gp$practice)                         # the 60 practices
-fold_of <- sample(rep(1:K, length.out = length(practices)))  # 12 practices per fold
-
-
-
-centre <- runif(J, 0, 10); u <- rnorm(J)          # group locations and effects
-g <- rep(1:J, each = m)
-xg <- centre[g] + rnorm(J * m, 0, 0.1)
-yg <- 0.2 * xg + u[g] + rnorm(J * m, 0, 0.5)
-nn1 <- function(xt, yt, xn) yt[sapply(xn, function(x0) which.min(abs(xt - x0)))]
-cv_nn <- function(folds) mean(sapply(1:10, function(k) {
-  tr <- folds != k
-  mean((yg[!tr] - nn1(xg[tr], yg[tr], xg[!tr]))^2)
-}))
-random_folds <- sample(rep(1:10, length.out = J * m))
-group_folds <- sample(rep(1:10, length.out = J))[g]
-Jn <- 4000; cn <- runif(Jn, 0, 10)                 # new groups, to find the truth
-xn <- cn + rnorm(Jn, 0, 0.1); yn <- 0.2 * xn + rnorm(Jn) + rnorm(Jn, 0, 0.5)
-round(c(random_folds = cv_nn(random_folds), grouped_folds = cv_nn(group_folds),
-        new_groups = mean((yn - nn1(xg, yg, xn))^2)), 2)
