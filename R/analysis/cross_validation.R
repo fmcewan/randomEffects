@@ -47,5 +47,5 @@ cross_validation <- function(data, K = 5,f) {
 }
 
 set.seed(2026)
-s_glmcross_validation(data=gp,f=f_glm)
-
+s_glm<-cross_validation(data=gp,f=f_glm)
+s_glm
