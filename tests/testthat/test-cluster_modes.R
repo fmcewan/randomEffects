@@ -52,7 +52,7 @@ test_that("modes and curvatures agree with independent calculations", {
         reference_H <- -numDeriv::hessian(h_j, reference$maximum)[1, 1]
 
         # Checking if u,H found by cluster_modes are close enough to the one found using optimize
-        expect_equal(fit$u_hat[j], reference$maximum, tolerance = 1e-5)
+        expect_equal(unname(fit$u_hat[j]), reference$maximum, tolerance = 1e-5)
         expect_equal(unname(fit$H[j]), reference_H, tolerance = 1e-5)
     }
 })
