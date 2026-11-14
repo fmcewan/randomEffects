@@ -1,8 +1,44 @@
-### (Reminder I have to add comments / documentation / testing later) ###
-
-# for everyone else reading this (before i document properly):
-# this function identifies the most likely practice effect,
-# for each cluster (aka for each practice): its "cluster mode"
+#' Finding cluster modes and curvatures
+#'
+#' Finding the mode of each cluster's intercept and the
+#' negative second derivative of its log-integrand (objective) at that mode
+#'
+#' @param theta Vector containing: 
+#'   one regression coefficient per column, 
+#'   followed by log(sigma), where sigma is the standard deviation of the random intercepts
+#' @param cd List containing: 
+#'   y: a numeric vector of binary responses,
+#'   X: a finite numeric model matrix with one row per response,
+#'   group: Holds integer identifiers (from 1 to J) matching patient to practice,
+#'   and J: the number of clusters (int)
+#' @param tol First derivative tolerance threshold, default = 1e-8
+#' @param maxit Positive integer maximum number of Newton updates, default = 100
+#'
+#' @details
+#' All cluster modes are updated simultaneously using Newton's method with analytic derivatives
+#' Backtracking is applied separately to each cluster to ensure sufficient increase in objective
+#' The input coefficients and random-intercept standard deviation are fixed
+#' Convergence requires every absolute first derivative to be at most tol
+#'
+#' @return A list containing:
+#' - u_hat: The mode for each practice, in cluster order
+#' - H: The negative second derivative at each mode
+#' - iterations: The number of Newton updates
+#' - converged: TRUE if convergence is reached, throws error otherwise
+#'
+#' @examples
+#' cd <- list(
+#'   y = c(0, 1, 1, 1),
+#'   X = cbind(1, c(-1, 0, 0.5, 1)),
+#'   group = c(1, 1, 2, 2),
+#'   J = 2
+#' )
+#' theta <- c(-0.5, 1, log(0.8))
+#' fit <- cluster_modes(theta, cd)
+#' fit$u_hat
+#' fit$H
+#'
+#' @export
 cluster_modes <- function(theta, cd, tol = 1e-8, maxit = 100) {
   
   # Checking that the expected inputs from cluster_data() exist
@@ -59,7 +95,7 @@ cluster_modes <- function(theta, cd, tol = 1e-8, maxit = 100) {
   # Evaluating log(1 + exp(z)) without overflow (from chapter 10 notes)
   softplus <- function(z) { pmax(z, 0) + log1p(exp(-abs(z))) }
   
-  # Evaluating each practice's log-integrand at proposed effects u
+  # Evaluating each practice's log-integrand at proposed effects u (adapted idea from practical 7 h_j())
   log_integrand <- function(u) {
     # First, adding each practice effect to the predictors of its patients
     eta <- eta_fixed + u[group]
@@ -145,10 +181,6 @@ cluster_modes <- function(theta, cd, tol = 1e-8, maxit = 100) {
     iterations <- iterations + 1
   }
   
-  list(
-    u_hat = u,
-    H = d$H,
-    iterations = iterations,
-    converged = TRUE
-  )
+  # Return estimated practice effects, curvature, iterations and convergence flag
+  list(u_hat = u, H = d$H, iterations = iterations, converged = TRUE)
 }
