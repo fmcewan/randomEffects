@@ -1,20 +1,4 @@
 # Part D2
-# Part D2
-# # #Compare the random-intercept model with a pooled logistic regression,
-# #glm(attended ~ age, family = binomial), 
-# #by 5-fold cross-validation in which each fold holds out whole practices (Lecture 11). 
-# Score each model by the log-likelihood of the held-out practices’ responses: 
-#   for the random-intercept model, that is ∑jlogLj
-# # over the held-out practices, at the parameters fitted to the other folds. 
-# Report both cross-validated scores with their standard errors across folds. 
-# Explain why holding out random patients instead would be wrong here [at most 100 words].
-
-#data load
-group <- 5   # replace with your group number
-source("raw_data/group_data.R")
-gp <- group_data(group)
-
-
 f_glm <- function(train, test) {
   fit <- glm(attended ~ age, family = binomial, data = train) #fit model
   p <- predict(fit, test, type = "response") #predict model on test dataset
