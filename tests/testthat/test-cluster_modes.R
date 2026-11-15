@@ -6,11 +6,9 @@ cm_cd <- list(
           1, 1, 1, 1,  # Practice 2 has all-one responses
           0, 1, 0, 1), # And practice 3 has a mixture
     X = cbind(1, rep(c(-1, -0.5, 0.5, 1), 3)), group = rep(1:3, each = 4), J = 3)
-# Parameter theta to run cluster_modes
+# Test theta, and also extracting some of its contents to avoid repetition
 cm_theta <- c(-0.5, 1, log(0.8))
-# Extracting these from theta to avoid repetition
-beta <- cm_theta[1:2]
-sigma <- exp(cm_theta[3])
+beta <- cm_theta[1:2]; sigma <- exp(cm_theta[3])
 
 # TEST 1) Checking if gradient met threshold, and convergence
 test_that("cluster modes have zero gradient", {
@@ -87,10 +85,7 @@ test_that("invalid inputs produce informative errors", {
   expect_error(cluster_modes(cm_theta, bad_cd), regexp = "binary response")
 
   # Inappropriate theta provided (no log(sigma))
-  expect_error(
-    cluster_modes(cm_theta[-3], cm_cd), # removing log(sigma) from theta before running 
-    regexp = "theta must contain"
-  )
+  expect_error(cluster_modes(cm_theta[-3], cm_cd), regexp = "theta must contain")
 
   # Negative tolerance
   expect_error(cluster_modes(cm_theta, cm_cd, tol = -1), regexp = "tol must be positive")
