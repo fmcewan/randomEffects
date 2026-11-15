@@ -1,6 +1,6 @@
 # Laplace and adaptive Gauss-Hermite quadrature
 
-# laplace log likelihood, adapting laplace_j() from Practical 7 
+# (Laplace) log likelihood, per practice adapting laplace_j() from Practical 7 
 # but using cluster_modes() instead of optimize()
 laplace_loglik <- function(theta, cd) {
     
@@ -30,4 +30,72 @@ laplace_loglik <- function(theta, cd) {
     # Note for other group members: due to rowsum() this returned value will have labels attached
     # Use unname() in implementation if needed, I have kept it for consistency
     log_lik
+}
+
+
+# (Adaptive Gauss-Hermite) log likelihood per practice (adapted from Practical 7 extension)
+agh_loglik <- function(theta, cd, K = 7) {
+
+    # Checking K is valid
+    if (!is.numeric(K) || length(K) != 1 || !is.finite(K) || K < 1 || K != floor(K)) {
+        stop("K must be a positive integer.")
+    }
+
+    # Storing/renaming for simplicity
+    beta <- theta[seq_len(ncol(cd$X))]; sigma <- exp(theta[length(theta)])
+    X <- cd$X; y <- cd$y
+    group <- cd$group; J <- cd$J
+
+    # Store modes and curvature of given parameters
+    modes <- cluster_modes(theta, cd)
+    u_hat <- unname(modes$u_hat); H <- unname(modes$H) 
+
+    # Taking nodes and weights from gh (written by different group memeber, see gauss_hermite.R)
+    gh <- gauss_hermite(K)
+    nodes <- gh$nodes; weights <- gh$weights # Store in more convenient variables
+
+    # Centering nodes at each mode and scale (adapted from practical 7 loglik_agq())
+    scale <- 1 / sqrt(H) # Scale based on curvature
+    # u is a JxK matrix (each row containing all nodes for that practice)
+    u <- sweep(
+        outer(sqrt(2) * scale, nodes),       # Multiplying nodes by the practice's scale
+        MARGIN = 1, STATS = u_hat, FUN = "+" # Adding the mode to the nodes to recenter them
+    )
+
+    # Give every patient the integration points for their practice
+
+    eta_fixed <- drop(X %*% beta)
+    # eta has one row per patient and one column per node
+    eta <- sweep(
+        u[group, , drop = FALSE], # Selecting every patient's nodes (based on their practice)
+        MARGIN = 1, STATS = eta_fixed, FUN = "+" # Adding that patient's fixed predictor to nodes
+    )
+
+    softplus <- function(z) { pmax(z, 0) + log1p(exp(-abs(z))) } # Same softplus
+
+    # Repeating observed outcomes across node columns (one per patient)
+    y_mat <- matrix(y, nrow = length(y), ncol = K)
+    # Elementwise logprobability computation 
+    log_prob <- ifelse(y_mat == 1, -softplus(-eta), -softplus(eta)) computation 
+
+    # h contains one log-integrand value per practice and node
+    h <- rowsum(log_prob, group, reorder = TRUE) + dnorm(u, mean = 0, sd = sigma, log = TRUE)
+
+    # Adding corrected weights to log-integrand values (adapted from practical 7's loglik_agq())
+    log_terms <- sweep(h, MARGIN = 2, STATS = log(weights) + nodes^2, FUN = "+")
+
+    # Each row's maximum, without looping over practices (vector of length J)
+    row_max <- log_terms[
+        cbind(seq_len(J),  # generate J many (row, max_col) pairs into a Jx2 matrix
+        max.col(log_terms, ties.method = "first")) # Each row's max column (no loop)
+        ]
+
+    # Rescaling based on the max entry for that practice (for numerical safety)
+    shifted <- sweep(log_terms, MARGIN = 1, STATS = row_max, FUN = "-")
+    log_sum <- row_max + log(rowSums(exp(shifted))) # Undoing rescaling
+
+    # Finally, applying the change-of-variable factor (also adapted from practical 7)
+    log_lik <- 0.5 * log(2) + log(scale) + log_sum
+
+    setNames(log_lik, seq_len(J)) # Again, numbering results for consistency
 }
