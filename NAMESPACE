@@ -3,6 +3,7 @@
 export(agh_loglik)
 export(cluster_modes)
 export(laplace_loglik)
+export(is_draws)
 export(summarise_study)
 importFrom(stats,
   dnorm,
