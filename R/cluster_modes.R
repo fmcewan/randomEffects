@@ -37,7 +37,9 @@
 #' fit <- cluster_modes(theta, cd)
 #' fit$u_hat
 #' fit$H
-#'
+#'  
+#' @importFrom stats dnorm plogis setNames
+#' 
 #' @export
 cluster_modes <- function(theta, cd, tol = 1e-8, maxit = 100) {
   

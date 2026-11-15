@@ -28,13 +28,15 @@
 #' )
 #' theta <- c(0.5, 0.8, log(1))
 #' laplace_loglik(theta, cd)
-#'  
+#'   
+#' @export
 laplace_loglik <- function(theta, cd) {
     
     # Storing/renaming values used later, for readability
     X <- cd$X
     y <- cd$y
     group <- cd$group 
+    J <- cd$J
     beta <- theta[seq_len(ncol(X))]
     sigma <- exp(theta[length(theta)])
     
@@ -89,7 +91,8 @@ laplace_loglik <- function(theta, cd) {
 #' )
 #' theta <- c(0.5, 0.8, log(1))
 #' agh_loglik(theta, cd, K = 10)
-# 
+#'  
+#' @export 
 agh_loglik <- function(theta, cd, K = 7) {
 
     # Checking K is valid
