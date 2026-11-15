@@ -54,9 +54,9 @@ laplace_loglik <- function(theta, cd) {
     # From laplace_j (practical 7), slightly modified to avoid division
     log_lik <- h_hat + 0.5 * (log(2 * pi) - log(H))
 
-    # Note for other group members: due to rowsum() this returned value will have labels attached
-    # Use unname() in implementation if needed, I have kept it for consistency
-    log_lik
+    # Note for other group members: this returned value will have labels attached
+    # Use unname() in implementation if needed, I have set it for consistency
+    setNames(log_lik, seq_len(J))
 }
 
 #' Cluster log-likelihoods using adaptive Gauss-Hermite quadrature approximation
