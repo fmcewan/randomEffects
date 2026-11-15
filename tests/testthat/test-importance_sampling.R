@@ -28,3 +28,4 @@ test_that("is_draws rejects invalid input", {
   expect_error(is_draws(cd, R = 10, df = 0), "positive")
   expect_error(is_draws(list(), R = 10), "J") 
 })
+
