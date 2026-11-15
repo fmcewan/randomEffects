@@ -1,7 +1,34 @@
 # Laplace and adaptive Gauss-Hermite quadrature
 
-# (Laplace) log likelihood, per practice adapting laplace_j() from Practical 7 
-# but using cluster_modes() instead of optimize()
+#' Cluster log-likelihoods using Laplace approximation
+#'
+#' @param theta Vector of regression coefficients, one per column of cd$X,
+#'   followed by log(sigma), where sigma is the standard deviation of the random intercepts
+#' @param cd List containing:
+#'   binary responses y,
+#'   model matrix X,
+#'   cluster indices group (containing every integer 1-J)
+#'   and number of clusters J
+#'
+#' @details
+#' Uses cluster_modes() for each cluster's mode and curvature, then applies the Laplace formula
+#' (adapting laplace_j() from Practical 7, but using cluster_modes())
+#' 
+#' @return A named numeric vector of length J, 
+#'   containing one approximate marginal log-likelihood per cluster, 
+#'   ordered and labelled by cluster index. 
+#'   Contributions are not summed across clusters.
+#'
+#' @examples
+#' cd <- list(
+#'  y = c(0, 1, 1, 0, 1, 0),
+#'  X = cbind(intercept = rep(1, 6), x = c(-1, 0, 1, -1, 0, 1)),
+#'  group = rep(1:2, each = 3), 
+#'  J = 2
+#' )
+#' theta <- c(0.5, 0.8, log(1))
+#' laplace_loglik(theta, cd)
+#'  
 laplace_loglik <- function(theta, cd) {
     
     # Storing/renaming values used later, for readability
@@ -32,8 +59,37 @@ laplace_loglik <- function(theta, cd) {
     log_lik
 }
 
-
-# (Adaptive Gauss-Hermite) log likelihood per practice (adapted from Practical 7 extension)
+#' Cluster log-likelihoods using adaptive Gauss-Hermite quadrature approximation
+#' (adapted from Practical 7 extension)
+#'
+#' @param theta Vector of regression coefficients, 
+#'   one per column of cd$X, 
+#'   followed by log(sigma), where sigma is the standard deviation of the random intercepts
+#' @param cd List containing:
+#'   binary responses y, 
+#'   model matrix X,
+#'   cluster indices group and number of clusters J 
+#' @param K Integer number of quadrature nodes per cluster, default=7
+#' 
+#' @details Uses cluster_modes() to centre and scale the nodes 
+#'   supplied by gauss_hermite() for each cluster. 
+#'   Weighted contributions are combined using log-sum-exp for numerical stability.
+#'   (adapted from the adaptive Gauss-Hermite extension in Practical 7)
+#'
+#' @return A named vector of length cd$J, 
+#'   containing one approximate marginal log-likelihood per cluster, 
+#'   ordered and labelled by cluster index
+#'
+#' @examples
+#' cd <- list(
+#'  y = c(0, 1, 1, 0, 1, 0),
+#'  X = cbind(intercept = rep(1, 6), x = c(-1, 0, 1, -1, 0, 1)),
+#'  group = rep(1:2, each = 3), 
+#'  J = 2
+#' )
+#' theta <- c(0.5, 0.8, log(1))
+#' agh_loglik(theta, cd, K = 10)
+# 
 agh_loglik <- function(theta, cd, K = 7) {
 
     # Checking K is valid
@@ -76,7 +132,7 @@ agh_loglik <- function(theta, cd, K = 7) {
     # Repeating observed outcomes across node columns (one per patient)
     y_mat <- matrix(y, nrow = length(y), ncol = K)
     # Elementwise logprobability computation 
-    log_prob <- ifelse(y_mat == 1, -softplus(-eta), -softplus(eta)) computation 
+    log_prob <- ifelse(y_mat == 1, -softplus(-eta), -softplus(eta)) 
 
     # h contains one log-integrand value per practice and node
     h <- rowsum(log_prob, group, reorder = TRUE) + dnorm(u, mean = 0, sd = sigma, log = TRUE)
