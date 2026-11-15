@@ -18,7 +18,7 @@ negative_loglik <- function(theta, cd, lik_method,  K, draws) {
 #'              and log sigma = 0.
 #'
 #' @return A list with par (estimates of theta), se (standard
-#'   errors, which are NA if the Hessian cannot be inverted, loglik
+#'   errors, which are NA if the Hessian cannot be inverted), loglik
 #'   (the maximised log-likelihood) and convergence (code from
 #'   optim, 0 means success).
 #'
@@ -32,7 +32,7 @@ fit_rint <- function(cd, method, K=NULL, draws=NULL, start=NULL) {
   
   # If no start is supplied, guess through logistic regression
   if (is.null(start)) {
-    beta_start <- coef(glm(cd$y ~ cd$X - 1, family = binomial))
+    beta_start <- unname(coef(glm(cd$y ~ cd$X - 1, family = binomial)))
     start <- c(beta_start, 0)
   }
 
