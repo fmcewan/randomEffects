@@ -54,7 +54,32 @@ row_logsumexp <- function(A) {
   amax + log(rowSums(exp(A - amax)))
 }
 
-
+#' Importance Sampling estimate of each clusters log-likelihood
+#'
+#' Estimates log L_i = log integral with respect to b (f(y_i|b)*phi(b;0, sigma))
+#' for each cluster. The proposal for cluster i is a t distribution centred at
+#' the mode of that cluster's integrand and scaled by its curvature,
+#' b = uhat_i + T/root(H_i) * L_i is then estimated by the mean
+#' importance weight f(b)/q(b), with everything computed on the log scale.
+#'
+#' @param theta Numeric vector (beta, logsigma).
+#' @param cd List with `y` (0/1 response), `X` (n x p design matrix), `group`
+#'   (cluster index 1..J) and `J` (number of clusters).
+#' @param draws J x R matrix from [is_draws()]. Reuse the same matrix for every
+#'   `theta`, so that the estimate stays smooth in `theta` and can be optimised.
+#'
+#' @return Numeric vector of length J of estimated logL_i, with
+#'   attribute `"mc_se"` giving the Monte Carlo standard error of each.
+#'
+#' @seealso [is_draws()], [cluster_modes()]
+#' @keywords internal
+#'
+#' @examples
+#' set.seed(1)
+#' cd <- sim_cd(10, 5, c(-0.5, 1), 1)
+#' ll <- importance_sampling(c(-0.5, 1, 0), cd, is_draws(cd, R = 500))
+#' sum(ll)
+#' attr(ll, "mc_se")
 importance_sampling <- function(theta, cd, draws) {
   #Check the draws are usable
   if (is.null(draws) || !is.matrix(draws) || nrow(draws) != cd$J || is.null(attr(draws, "df")))
