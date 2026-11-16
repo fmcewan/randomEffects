@@ -7,7 +7,7 @@
 #'
 #'@return a list containing the nodes and the weights
 #'
-#'@example
+#'@examples
 #'gh <- gauss_hermite(5)
 #'gh$nodes
 #'
@@ -17,7 +17,7 @@ gauss_hermite <- function(n) {
     stop("n must be a valid positive integer")
   }
 
-  k <- 1:(n - 1)
+  k <- seq_len(n-1)
   #building matrix of 0s
   J <- matrix(0, n, n)
   #making J a symmetric tridiagonal Jacobi matrix

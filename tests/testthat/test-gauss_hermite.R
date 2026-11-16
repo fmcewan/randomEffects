@@ -1,5 +1,4 @@
 #Tests for gauss-hermite function
-library(testthat)
 
 test_that("gh produces correctly formatted output",{
   expect_equal(5, length(gauss_hermite(5)$nodes))
