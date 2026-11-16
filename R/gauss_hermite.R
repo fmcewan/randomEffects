@@ -51,10 +51,22 @@ gauss_hermite <- function(n) {
 #'@export
 gh <- function(theta, data, K){
   if (length(theta) != 3 || !is.numeric(theta)) {
-    stop("theta must contain exactly two numeric parameters")
+    stop("theta must contain exactly 3 numeric parameters")
   }
   beta <- theta[1:2]
   sigma <- exp(theta[3])
+  
+  if (length(K) != 1 || !is.finite(K) || K < 1 || K != as.integer(K)){
+    stop("K must be a valid positive integer")
+  }
+  
+  if (!all(sapply(data, is.numeric))) {
+    stop("All columns in data must be numeric")
+  }
+  
+  if (any(is.na(data))) {
+    stop("Data must not contain NAs")
+  }
   
   cluster <- factor(data$practice)
   n_clusters <- nlevels(cluster)
