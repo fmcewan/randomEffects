@@ -39,7 +39,7 @@ gauss_hermite <- function(n) {
 #'@param K number of nodes
 #'
 #'@examples
-#'example_theta <- c(-0.5, log(0.8))
+#'example_theta <- c(0, -0.5, log(0.8))
 #'example_data <- data.frame(
 #'   practice = c(1,1,2,2,3,3),
 #'   age = c(-0.36, -2.03, 1.3, -0.89, -0.06, -0.05),
@@ -50,8 +50,11 @@ gauss_hermite <- function(n) {
 #'
 #'@export
 gh <- function(theta, data, K){
-  beta <- theta[1]
-  sigma <- exp(theta[2])
+  if (length(theta) != 3 || !is.numeric(theta)) {
+    stop("theta must contain exactly two numeric parameters")
+  }
+  beta <- theta[1:2]
+  sigma <- exp(theta[3])
   
   cluster <- factor(data$practice)
   n_clusters <- nlevels(cluster)
@@ -68,7 +71,7 @@ gh <- function(theta, data, K){
   #calculating beta*x +u for every quadrature node K
   #each row is an observation. beta*x will be consistent across the row.
   #each column corresponds to a quadrature node. u will be consistent down a column.
-  linear_predictors <- outer(beta*x, rep(1,K)) + matrix(rep(u, each = n), nrow = n)
+  linear_predictors <- outer(beta[1] + beta[2]*x, rep(1,K)) + matrix(rep(u, each = n), nrow = n)
   
   #Calculate Bernoulli log probabilities. 
   #Note: 1-plogis(t) = plogis(-t)
