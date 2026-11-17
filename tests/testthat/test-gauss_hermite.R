@@ -24,33 +24,41 @@ test_that("all weights are positive",{
 
 #Tests for gh
 example_theta <- c(0, -0.5, log(0.8))
-example_data <- data.frame(
-  practice = c(1,1,2,2,3,3),
-  age = c(-0.36, -2.03, 1.3, -0.89, -0.06, -0.05),
-  attended = c(0,0,1,0,0,0)
-  )
 
-invalid_data <- data.frame(
-  practice = c(1, "1", 2, 2, 3, 3),
-  age = c(-0.36, -2.03, 1.3, -0.89, -0.06, -0.05),
-  attended = c(0,0,1,0,0,0)
+example_cd <- list(
+  y = c(0,0,1,0,0,0),
+  X = matrix(c(1,1,1,1,1,1,0.1, 0.36, -0.2, 0, -0.23, -0.05), nrow = 6),
+  group = c(1,1,2,2,3,3),
+  J = 3,
+  cluster_size = c(2,2,2)
 )
 
-void_data <- data.frame(
-  practice = c(1, 1, 2, 2, NA, 3),
-  age = c(-0.36, -2.03, 1.3, -0.89, -0.06, -0.05),
-  attended = c(0,0,1,0,0,0)
+invalid_cd <- list(
+  y = c(0,0,"1",0,0,0),
+  X = matrix(c(1,1,1,1,1,"one",0.1, 0.36, -0.2, 0, -0.23, -0.05), nrow = 6),
+  group = c(1,1,2,2,3,3),
+  J = 3,
+  cluster_size = c(2,2,2)
+)
+
+
+void_cd <- list(
+  y = c(0,0,1,0,0,NA),
+  X = matrix(c(1,1,NA,1,1,1,0.1, 0.36, -0.2, 0, -0.23, -0.05), nrow = 6),
+  group = c(1,1,2,2,3,3),
+  J = 3,
+  cluster_size = c(2,2,2)
 )
 
 test_that("gh produces correctly formatted output",{
-  expect_true(length(gh(example_theta, example_data, 4)) == 3)
+  expect_true(length(gh(example_theta, example_cd, 4)) == 3)
 })
 
 test_that("gh produces errors for invalid inputs",{
-  expect_error(gh(c(0, "-0.5", log(0.8)), example_data, 4), regexp = "theta must contain exactly 3 numeric parameters")
-  expect_error(gh(c(-0.5, log(0.8)), example_data, 4), regexp = "theta must contain exactly 3 numeric parameters")
-  expect_error(gh(example_theta, example_data, 0), regexp = "K must be a valid positive integer")
-  expect_error(gh(example_theta, invalid_data, 3), regexp = "All columns in data must be numeric")
-  expect_error(gh(example_theta, void_data, 3), regexp = "Data must not contain NAs")
+  expect_error(gh(c(0, "-0.5", log(0.8)), example_cd, 4), regexp = "theta must contain exactly 3 numeric parameters")
+  expect_error(gh(c(-0.5, log(0.8)), example_cd, 4), regexp = "theta must contain exactly 3 numeric parameters")
+  expect_error(gh(example_theta, example_cd, 0), regexp = "K must be a valid positive integer")
+  expect_error(gh(example_theta, invalid_cd, 3), regexp = "All columns in data must be numeric")
+  expect_error(gh(example_theta, void_cd, 3), regexp = "Data must not contain NAs")
 })
 
