@@ -53,7 +53,7 @@ cluster_data <- function(y, X, group){
   return(list(
     y = y,
     X = X,
-    cluster_labels = cluster_labels,
-    n_clusters = n_clusters,
+    group = cluster_labels,
+    J = n_clusters,
     cluster_size = cluster_size))
 }
