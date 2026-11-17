@@ -51,5 +51,6 @@ theta <- c(-0.5, 1, log(0.8))
 fit <- cluster_modes(theta, cd)
 fit$u_hat
 fit$H
+ 
 
 }
