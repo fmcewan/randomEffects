@@ -21,7 +21,7 @@ and log sigma = 0.}
 }
 \value{
 A list with par (estimates of theta), se (standard
-errors, which are NA if the Hessian cannot be inverted, loglik
+errors, which are NA if the Hessian cannot be inverted), loglik
 (the maximised log-likelihood) and convergence (code from
 optim, 0 means success).
 }
