@@ -22,6 +22,34 @@ test_that("all weights are positive",{
   expect_true(all(gauss_hermite(4)$weights > 0))
 })
 
+test_that("Gauss-Hermite integrates polynomials up to degree 2n-1", {
+  #arbitrary list of various values of n
+  for (n in c(1, 2, 3, 5, 10)) {
+    
+    gh <- gauss_hermite(n)
+    #testing all k in the valid range
+    for (k in 0:(2*n - 1)) {
+      
+      # Gauss-Hermite approximation
+      approximation <- sum(gh$weights * gh$nodes^k)
+      
+      # True integral using integrate()
+      expected <- integrate(
+        function(x) x^k * exp(-x^2),
+        lower = -Inf,
+        upper = Inf
+      )$value
+      
+      expect_equal(
+        approximation,
+        expected,
+        tolerance = 1e-8,
+        info = paste("Failed for n =", n, "and k =", k)
+      )
+    }
+  }
+})
+
 #Tests for gh
 example_theta <- c(0, -0.5, log(0.8))
 
@@ -62,3 +90,5 @@ test_that("gh produces errors for invalid inputs",{
   expect_error(gh(example_theta, void_cd, 3), regexp = "Data must not contain NAs")
 })
 
+
+#TEST THAT 'gh' with many nodes agree with integrate() for every cluster
