@@ -18,7 +18,8 @@
 #'@examples
 #'y_example <- c(0,0,0,1,1,0)
 #'X_example <- matrix(c(1,1,1,1,1,1,0.1, 0.36, -0.2, 0, -0.23, -0.05), nrow = 6)
-#'group <- 
+#'group_example <- c(1,2,3,1,2,3)
+#'cluster_data(y_example, X_example, group_example)
 #'
 #'@export
 cluster_data <- function(y, X, group){
@@ -36,12 +37,12 @@ cluster_data <- function(y, X, group){
     stop("y, X and group must have the same number of observations")
   }
   
-  if(!is.integer(group) || anyNA(group)){
+  if(!is.numeric(group) || anyNA(group)){
     stop("group must only contain integers")
   }
   
   #A vector containing all distinct cluster labels
-  cluster_labels <- factor(group)
+  cluster_labels <- as.numeric(factor(group))
   
   #An integer corresponding to the number of distinct cluster labels
   n_clusters <- length(unique(cluster_labels))
@@ -49,9 +50,10 @@ cluster_data <- function(y, X, group){
   #A vector stating the size of each cluster
   cluster_size <- tabulate(group, nbins = n_clusters)
   
-  return(y = Y,
-         X = X,
-         cluster_labels = cluster_labels,
-         n_clusters = n_clusters,
-         cluster_size = cluster_size)
+  return(list(
+    y = y,
+    X = X,
+    cluster_labels = cluster_labels,
+    n_clusters = n_clusters,
+    cluster_size = cluster_size))
 }
