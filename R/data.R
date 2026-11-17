@@ -12,13 +12,17 @@
 #'  - y : the response
 #'  - X : the model matrix
 #'  - cluster_labels : a vector containing all distinct cluster labels
-#'  - n_clusters : the number of clusters
+#'  - n_clusters : an integer corresponding to the number of clusters
 #'  - cluster_size : the size of each cluster
 #'  
 #'@examples
+#'y_example <- c(0,0,0,1,1,0)
+#'X_example <- matrix(c(1,1,1,1,1,1,0.1, 0.36, -0.2, 0, -0.23, -0.05), nrow = 6)
+#'group <- 
 #'
 #'@export
 cluster_data <- function(y, X, group){
+  
   #Validate inputs
   if(anyNA(y) || !all(y == 0 | y == 1)){
     stop("y must contain only numeric 0s and 1s")
@@ -35,4 +39,19 @@ cluster_data <- function(y, X, group){
   if(!is.integer(group) || anyNA(group)){
     stop("group must only contain integers")
   }
+  
+  #A vector containing all distinct cluster labels
+  cluster_labels <- factor(group)
+  
+  #An integer corresponding to the number of distinct cluster labels
+  n_clusters <- length(unique(cluster_labels))
+  
+  #A vector stating the size of each cluster
+  cluster_size <- tabulate(group, nbins = n_clusters)
+  
+  return(y = Y,
+         X = X,
+         cluster_labels = cluster_labels,
+         n_clusters = n_clusters,
+         cluster_size = cluster_size)
 }
