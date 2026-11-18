@@ -1,5 +1,3 @@
-# cluster_data and rint_sim 
-
 #'Cluster Data function
 #'
 #'@description Prepares and validates the data before calculating the marginal log-likelihood
@@ -56,4 +54,52 @@ cluster_data <- function(y, X, group){
     group = cluster_labels,
     J = n_clusters,
     cluster_size = cluster_size))
+}
+
+#'rint_sim Function
+#'
+#'@description Simulate data according to the model with one standard-normal covariate
+#'
+#'@param J integer which represents the desired number of clusters
+#'@param m integer which represents the desired number of observations within each cluster
+#'@param beta vector of regression coefficients
+#'@param log_sigma a float log(sigma) where sigma is the standard deviation of the random intercepts
+#'
+#'@return a list containing:
+#'y = a vector of the simulated binary responses, 
+#'X = a vector of the simulated design matrix, 
+#'group = a vector assigning every observation to their cluster
+#'J = an integer representing the number of clusters
+#'
+#'@examples
+#'
+#'@export
+rint_sim <- function(J, m, beta, log_sigma){
+  #Generating the random intercepts for each cluster. 1 per cluster.
+  u <- rnorm(J, mean = 0, sd = exp(sigma))
+  
+  #Generating the covariates. One covariate per observation.
+  #mean = 0 and sd = 1 so utilising rnorm's default
+  x <- rnorm(J*m)
+  
+  #Building the design matrix
+  X <- cbind(intercept = 1, x = x)
+  
+  #Making a vector to later assign every observation to their appropriate random intercept.
+  group <- rep(1:J, each = M) 
+  
+  #Calculating the probability of each observation having a response 1
+  p <- plogis(drop(X %*% beta) + u[group])
+  
+  #Generating the binary reponses
+  y <- rbinom(J*m, size = 1, prob = p)
+  
+  #returning an output 'cd' in line with expected input of other functions
+  
+  return(list(
+    y = y, 
+    X = X,
+    group = group,
+    J = J
+  ))
 }
