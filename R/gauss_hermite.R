@@ -72,7 +72,7 @@ gh <- function(theta, cd, K){
     stop("All columns in data must be numeric")
   }
   
-  if (any(is.na(cd$y)) || any(is.na(cd$X)) ||any(is.na(cd$y))){
+  if (any(is.na(cd$y)) || any(is.na(cd$X)) ||any(is.na(cd$group))){
     stop("Data must not contain NAs")
   }
   
@@ -117,4 +117,49 @@ gh <- function(theta, cd, K){
     )
   #return a vector containing the log likelihood for each cluster j
   return(log_likelihoods)
+}
+
+
+#'Function to calculate the true marginal likelihood of a cluster
+#'
+#'Used for testing the accuracy of gh in test-gauss_hermite
+#'
+#'@param theta Vector containing reparameterised beta and log sigma
+#'@param cd List containing: 
+#'   y: a numeric vector of binary responses,
+#'   X: a finite numeric model matrix with one row per response,
+#'   group: Holds integer identifiers (from 1 to J) matching patient to practice,
+#'   J: integer stating the number of clusters 
+#'   and cluster_size: the number of observations per cluster
+#'@param j cluster to integrate
+#'
+#'@return log marginal likelihood of the given cluster as a float
+#'
+cluster_integral <- function(theta, cd, j){
+  beta <- theta[1:2]
+  sigma <- exp(theta[3])
+  
+  indices <- cd$group == j
+  
+  y <- cd$y[indices]
+  X <- cd$X[indices, , drop=FALSE] #extracts the rows relevant to the specific cluster. 
+  #drop == FALSE keeps X as a matrix
+  
+  #Integrate over the random effect u
+  result <- integrate(
+    function(u){
+      linear_predictor <- outer(as.vector(X%*%beta),u, "+")
+      #each row of linear_predictor is an observation and each column represents a different random effect
+      
+      #log_lik stores the log_likelihood for each value of u 
+      log_lik <- colSums(
+        y *plogis(linear_predictor, log.p = TRUE)+ (1-y)*plogis(-linear_predictor, log.p = TRUE)
+      )
+      
+      exp(log_lik) * dnorm(u, mean = 0, sd = sigma)
+    },
+    lower = Inf,
+    upper = Inf
+  )
+  log(result$value)
 }

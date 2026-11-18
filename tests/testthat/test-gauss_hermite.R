@@ -90,5 +90,21 @@ test_that("gh produces errors for invalid inputs",{
   expect_error(gh(example_theta, void_cd, 3), regexp = "Data must not contain NAs")
 })
 
-
-#TEST THAT 'gh' with many nodes agree with integrate() for every cluster
+test_that("gh agrees with integrate for every cluster",{
+  
+  for (K in c(50,75,100)){
+    gh_test <- gh(example_theta, example_cd, K)
+    
+    true_integral <- vapply(
+      unique(example_cd$group), #used this rather than 1:J because the actual group labels may be different,
+      function (j) cluster_integral(example_theta, example_cd, j),
+      numeric(1) #tells vapply to return exactly one numeric value per iteration (one value per cluster)
+    )
+    
+    expect_equal(
+      unname(gh_test), 
+      true_integral, 
+      tolerance = 1e-8
+    )
+  }
+})
