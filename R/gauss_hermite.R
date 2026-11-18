@@ -122,7 +122,7 @@ gh <- function(theta, cd, K){
 
 #'Function to calculate the true marginal likelihood of a cluster
 #'
-#'Used for testing the accuracy of gh in test-gauss_hermite
+#'Used for testing the accuracy of gh in test-gauss_hermite.R
 #'
 #'@param theta Vector containing reparameterised beta and log sigma
 #'@param cd List containing: 
