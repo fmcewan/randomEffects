@@ -30,6 +30,6 @@ test_that("cluster_data throws appropriate error when y, X and group do not have
 })
 
 test_that("cluster_data throws appropriate error when group does not contain only integers",{
-  expect_error(cluster_data(y_example, X_example, c("1", "2", "3", "1", "2", "3")), regexp = "group must only contain integers")
-  expect_error(cluster_data(y_example, X_example, c(1, 2, NA, NA, 2, 3)), regexp = "group must only contain integers")
+  expect_error(cluster_data(y_example, X_example, c("1", "2", "3", "1", "2", "3")), regexp = "group must be a vector of integers")
+  expect_error(cluster_data(y_example, X_example, c(1, 2, NA, NA, 2, 3)), regexp = "group must be a vector of integers")
 })

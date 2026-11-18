@@ -37,8 +37,8 @@ cluster_data <- function(y, X, group){
     stop("y, X and group must have the same number of observations")
   }
   
-  if(!is.numeric(group) || anyNA(group)){
-    stop("group must only contain integers")
+  if (!is.numeric(group) || anyNA(group) || !is.vector(group) || any(group != floor(group))) {
+    stop("group must be a vector of integers")
   }
   
   #A vector containing all distinct cluster labels
