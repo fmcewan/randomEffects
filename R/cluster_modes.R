@@ -37,7 +37,9 @@
 #' fit <- cluster_modes(theta, cd)
 #' fit$u_hat
 #' fit$H
-#'
+#'  
+#' @importFrom stats dnorm plogis setNames
+#' 
 #' @export
 cluster_modes <- function(theta, cd, tol = 1e-8, maxit = 100) {
   
@@ -182,5 +184,8 @@ cluster_modes <- function(theta, cd, tol = 1e-8, maxit = 100) {
   }
   
   # Return estimated practice effects, curvature, iterations and convergence flag
-  list(u_hat = u, H = d$H, iterations = iterations, converged = TRUE)
+  list(
+    u_hat = setNames(u, seq_len(J)), # Adding assosciated cluster index to both results for consistency
+    H = setNames(d$H, seq_len(J)),   # For others using this function: you may want to use unname() on the results
+    iterations = iterations, converged = TRUE)
 }
