@@ -34,9 +34,9 @@ cluster_loglik <- function(theta, cd, method, K=NULL, draws=NULL) {
   # TODO: Replace placeholders with the actual functions to call
   switch(
     method, 
-    "gh" = gauss_hermite(n),
-    "laplace" = laplace(theta, cd),
-    "agh" = adaptive_gauss_hermite(theta, cd, K),
+    "gh" = gh_loglik(theta, cd, K),
+    "laplace" = laplace_loglik(theta, cd),
+    "agh" = agh_loglik(theta, cd, K),
     "is" = importance_sampling(theta, cd, draws),
     stop("Method not yet implemented.")
   )
