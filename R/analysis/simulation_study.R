@@ -64,7 +64,7 @@ simulate_replicate <- function(replicate, scenario, J, beta, seed) {
   
   # Fit each method in the specification
   fits <- vector("list", nrow(specifications))
-  for (i in seq_len(specifications)) {
+  for (i in seq_len(nrow(specifications))) {
     fits[[i]] <- fit_method(cd, specifications$method[i], truth, K=specifications$K[i], draws=draws)
   }
   
@@ -73,6 +73,26 @@ simulate_replicate <- function(replicate, scenario, J, beta, seed) {
   
   # Put the scenaro deatils in front of every row 
   cbind(rep = replicate, m=scenario$m, sigma=scenario$sigma, results)
-
 }
 
+run_study <- function(number_of_replicates, J = 50, beta = c(-0.5, 1), seed = 2026) {
+  
+  # Create scenarios
+  scenarios <- expand.grid(m = c(2, 5, 20), sigma = c(0.5, 1.5))
+  scenarios$id <- seq_len(nrow(scenarios))
+  
+  # Create results vector
+  results <- vector("list", nrow(scenarios) * number_of_replicates)
+  k <- 0 
+  
+  # Simulate replicates for all results
+  for (s in seq_len(nrow(scenarios))) {
+    for (r in seq_len(number_of_replicates)) {
+      k <- k + 1
+      results[[k]] <- simulate_replicate(r, scenarios[s, ], J, beta, seed)
+    }
+  }
+
+  do.call(rbind, results)
+
+}
