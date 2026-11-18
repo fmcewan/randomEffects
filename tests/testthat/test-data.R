@@ -1,7 +1,7 @@
 #Example from roxygen comments
 y_example <- c(0,0,0,1,1,0)
 X_example <- matrix(c(1,1,1,1,1,1,0.1, 0.36, -0.2, 0, -0.23, -0.05), nrow = 6)
-group_example <- c(1,2,3,1,2,3)
+group_example <- factor(c(1,2,3,1,2,3))
 
 test_that("cluster_data works for valid inputs",{
   expect_true(all(cluster_data(y_example, X_example, group_example)$y == y_example))
@@ -29,7 +29,7 @@ test_that("cluster_data throws appropriate error when y, X and group do not have
   expect_error(cluster_data(y_example, X_example, c(1,2,3,1)), regexp = "y, X and group must have the same number of observations")
 })
 
-test_that("cluster_data throws appropriate error when group does not contain only integers",{
-  expect_error(cluster_data(y_example, X_example, c("1", "2", "3", "1", "2", "3")), regexp = "group must be a vector of integers")
-  expect_error(cluster_data(y_example, X_example, c(1, 2, NA, NA, 2, 3)), regexp = "group must be a vector of integers")
+test_that("cluster_data throws appropriate error when group is not a factor or contains NAs",{
+  expect_error(cluster_data(y_example, X_example, c(1,2,3,1,2,3)), regexp = "group must be a factor containing no NA values")
+  expect_error(cluster_data(y_example, X_example, factor(c(1, 2, NA, NA, 2, 3))), regexp = "group must be a factor containing no NA values")
 })
