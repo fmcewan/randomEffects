@@ -1,26 +1,20 @@
 # Part D1
 
-#source data
-library(here)
-library(randomEffects)#everyone's functions
-group <- 5
-source(here("raw_data", "group_data.R"))
-gp <- group_data(group)
-
 
 #pull in four methods
 methods <- c("agh","gh","is","laplace")
-K <- c(7,10,1)
+K <- c(agh=7,gh=10,is=NA,laplace=1)
 draws <- 100
 
 recommended <- "agh" #TODO
 
-
-#helper to fit method
 fit_method <- function(data, method, K, draws = NULL) {
   
-  X  <- model.matrix(~ age, data = data)          # intercept column + age
-  cd <- cluster_data(data$attended, X, data$practice) #TODO
+  X  <- model.matrix(~ age, data = data)
+  cd <- cluster_data(data$attended, X, data$practice)
+  
+  # IS needs a fixed J x R matrix of t draws, made once and reused for every theta
+  if (method == "is") draws <- is_draws(cd, R = draws, df = 5)
   
   negll <- function(theta) -marginal_loglik(theta, cd, method = method, K = K, draws = draws)
   
@@ -35,13 +29,33 @@ fit_method <- function(data, method, K, draws = NULL) {
        converged = opt$convergence == 0, time = time)
 }
 
+
+set.seed(2026)
+#testing fit method
+f_agh <- fit_method(gp, "agh", K = 7)
+f_gh  <- fit_method(gp, "gh",  K = 10)
+f_lap <- fit_method(gp, "laplace", K = 1)
+f_is  <- fit_method(gp, "is",  K = NA, draws = 100)
+str(f_agh)
+
+
+
+
+
+
+
+
+
+
+
+
+
 fits <- Map(function(m, k) fit_method(gp, m, k, draws = draws),
             methods, K)
 
-names(fits) <- methods$method
+
 
 #report estimates with CI
-
 z <- qnorm(0.975)
 results <- do.call(rbind,lapply(names(fits), function(m){
   
