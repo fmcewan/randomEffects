@@ -1,59 +1,22 @@
 # Part D1
 
-
-#pull in four methods
-methods <- c("agh","gh","is","laplace")
-K <- c(agh=7,gh=10,is=NA,laplace=1)
-draws <- 100
-
-recommended <- "agh" #TODO
-
-fit_method <- function(data, method, K, draws = NULL) {
-  
-  X  <- model.matrix(~ age, data = data)
-  cd <- cluster_data(data$attended, X, data$practice)
-  
-  # IS needs a fixed J x R matrix of t draws, made once and reused for every theta
-  if (method == "is") draws <- is_draws(cd, R = draws, df = 5)
-  
-  negll <- function(theta) -marginal_loglik(theta, cd, method = method, K = K, draws = draws)
-  
-  time <- system.time(
-    opt <- optim(c(0, 0, 0), negll, method = "BFGS")
-  )[["elapsed"]]
-  
-  H <- numDeriv::hessian(negll, opt$par)
-  V <- tryCatch(solve(H), error = function(e) matrix(NA, 3, 3))
-  
-  list(par = opt$par, se = sqrt(diag(V)),
-       converged = opt$convergence == 0, time = time)
+#helper to fix data
+make_cd <- function(data) {
+  cluster_data(data$attended, model.matrix(~ age, data = data), droplevels(data$practice))
 }
 
-
+#set up
+cd <- make_cd(gp)
 set.seed(2026)
-#testing fit method
-f_agh <- fit_method(gp, "agh", K = 7)
-f_gh  <- fit_method(gp, "gh",  K = 10)
-f_lap <- fit_method(gp, "laplace", K = 1)
-f_is  <- fit_method(gp, "is",  K = NA, draws = 100)
-str(f_agh)
+draws_is <- is_draws(cd,R=100)
 
-
-
-
-
-
-
-
-
-
-
-
-
-fits <- Map(function(m, k) fit_method(gp, m, k, draws = draws),
-            methods, K)
-
-
+#fit methods by fitrint
+fits <- list(
+  agh     = fit_rint(cd, "agh", K = 7),
+  gh      = fit_rint(cd, "gh",  K = 10),   # fails until gh_loglik exists
+  is      = fit_rint(cd, "is",  draws = draws_is),
+  laplace = fit_rint(cd, "laplace")
+)
 
 #report estimates with CI
 z <- qnorm(0.975)
