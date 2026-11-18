@@ -19,7 +19,7 @@ List of functions
 
 # Part B
 
-## B1 - How many nodes
+## B1 - How many nodes  - ROLE A (5)
 
 - **plot** of log error gh, agh nodes 1-30 vs agh (K=50)
 
@@ -31,7 +31,7 @@ List of functions
 
   - and node placement
 
-## B2 - Importance Sampling
+## B2 - Importance Sampling - Role C,D (5)
 
 - For the m=20 data set, estimate ℓ by importance sampling with R = 10, 30, 100, 300 and 1000 draws, repeating each 200 times with fresh draws. 
 
@@ -41,7 +41,7 @@ List of functions
 
 - Then show what goes wrong if `fit_rint()` draws fresh importance-sampling draws at every evaluation of ℓ.
 
-## B3 - Cost
+## B3 - Cost - Role B (5)
 
 - **Time** one evaluation of ℓ by each method with `system.time()`, repeating it enough times to give stable timings, for J = 50, 200 and 800 clusters of size 5.
 
@@ -49,20 +49,34 @@ List of functions
 
 - Which method would you use inside an optimiser that needs hundreds of evaluations, and why **\[at most 100 words\]?**
 
-# Part C
+# Part C (25)
 
-## C1
+Compare the four methods as ways of **fitting** the model, using `"agh"` with 7 nodes, `"gh"` with 10 nodes and `"is"` with 100 draws, alongside `"laplace"`. Follow the design and reporting guidance from Lecture 8.
 
-## C2
+## C1 - Design - Role D,E (6)
 
-## C3
+- Write the study’s ADEMP \[at most 200 words\].
 
-## C4
+- Use J=50 clusters, β=(−0.5,1), cluster sizes m = 2, 5 and 20, and σ = 0.5 and 1.5. Your estimands must include β1 and σ, and your performance measures must include bias, empirical standard error, and the coverage of nominal 95% Wald intervals (for σ, built on the logσ scale and back-transformed). Record how often each fit fails to converge, and say how you will handle such fits.
 
-# Part D
+## C2 - Number of replicates - Role D (4)
 
-## D1
+Choose the number of replicates so that the Monte Carlo standard error of each coverage is at most 1 percentage point, and that of each bias is small enough to detect the differences you care about. **Show the calculation, using a pilot run if you need one.**
 
-## D2
+## C3 - Results - Role D,E (8)
 
-## B4
+Run the study and present the results in tables and figures, with every performance measure given with its Monte Carlo standard error. Report the time each method took.
+
+## C4 - Recommendations - Role D,E (7)
+
+Which method would you recommend, for which cluster sizes and amounts of between-cluster variation? Explain the behaviour you see from how each method approximates Lj, linking it to your results in Part B \[at most 300 words\].
+
+# Part D (10 marks)
+
+## D1 - Analysis - Role E (5 marks)
+
+Fit the model `attended ~ age` with a random intercept for `practice` by the method your study recommends for data like these, and by the other three. Report the estimates with 95% confidence intervals, and interpret the effect of age as an odds ratio and σ in context: for example, compare the predicted attendance probability for a patient of average age at a practice one standard deviation above and below average \[at most 150 words\].
+
+## D2 - Do the practices matter? - Role E(5 marks)
+
+Compare the random-intercept model with a pooled logistic regression, `glm(attended ~ age, family = binomial)`, by 5-fold cross-validation in which each fold holds out **whole practices** (Lecture 11). Score each model by the log-likelihood of the held-out practices’ responses: for the random-intercept model, that is ∑jlogLj over the held-out practices, at the parameters fitted to the other folds. Report both cross-validated scores with their standard errors across folds. Explain why holding out random patients instead would be wrong here \[at most 100 words\].
