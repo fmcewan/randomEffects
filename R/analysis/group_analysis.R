@@ -13,7 +13,7 @@ draws_is <- is_draws(cd,R=100)
 #fit methods by fitrint
 fits <- list(
   agh     = fit_rint(cd, "agh", K = 7),
-  gh      = fit_rint(cd, "gh",  K = 10),   # fails until gh_loglik exists
+  #gh      = fit_rint(cd, "gh",  K = 10),   # fails until gh_loglik exists #TODO
   is      = fit_rint(cd, "is",  draws = draws_is),
   laplace = fit_rint(cd, "laplace")
 )
