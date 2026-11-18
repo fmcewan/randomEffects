@@ -48,7 +48,7 @@ cluster_data <- function(y, X, group){
   n_clusters <- length(unique(cluster_labels))
   
   #A vector stating the size of each cluster
-  cluster_size <- tabulate(group, nbins = n_clusters)
+  cluster_size <- tabulate(cluster_labels, nbins = n_clusters)
   
   return(list(
     y = y,
