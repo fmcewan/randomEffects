@@ -11,8 +11,8 @@
 #'@return A list containing:
 #'  - y : the response
 #'  - X : the model matrix
-#'  - cluster_labels : a vector containing all distinct cluster labels
-#'  - n_clusters : an integer corresponding to the number of clusters
+#'  - group : a vector containing all distinct cluster labels
+#'  - J : an integer corresponding to the number of clusters
 #'  - cluster_size : the size of each cluster
 #'  
 #'@examples
