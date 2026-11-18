@@ -1,24 +1,40 @@
 # Part D2
-fitter<- function(train, test,f="glm",K=NULL,draws=NULL) { #default is glm fit
+fitter<- function(train, test,method="glm",K=NULL,draws=NULL) { #default is glm fit
   
-  if (f=="glm"){
+  #baseline GLM model
+  
+  if (method=="glm"){
     fit <- glm(attended ~ age, family = binomial, data = train) #fit model
+    p <- predict(fit, test, type = "response") #predict model on test dataset
+    return (sum(dbinom(test$attended, 1, p, log = TRUE))) #let log-lik be the error measure
   }
   
-  else {
-    #check is one of required fns
-    if (!f %in% (c("agh","gh","is","laplace"))){
-      stop("f must be one of 'agh', 'gh', 'is', 'laplace'")
+
+  #check is one of required fns
+  if (!method %in% (c("agh","gh","is","laplace"))){
+    stop("method must be one of 'agh', 'gh', 'is', 'laplace'")
     }
-    
-    #This sits in my group analsis file
-    fit <- fit_method(train,f,K,draws)
-    
+
+   
+  #change data
+  cd_train <- make_cd(train);
+  cd_test <- make_cd(test) #TODO
+  
+  
+  # IS needs its own draws matrix for each dataset (one row per practice)
+  draws_train <- draws_test <- NULL
+  if (method == "is") {
+    draws_train <- is_draws(cd_train, R = draws)
+    draws_test  <- is_draws(cd_test,  R = draws)
   }
-    
-  p <- predict(fit, test, type = "response") #predict model on test dataset
-  sum(dbinom(test$attended, 1, p, log = TRUE)) #let log-lik be the error measure
+  
+  #and fit on training data
+  fit_train <- fit_rint(cd_train,method,K,draws_train)
+  
+  # 2. score held-out practices at those estimates (no refitting)
+  marginal_loglik(fit_train$par, cd_test, method, K = K, draws = draws_test)
 }
+
 
 
 #adapted from lecture 12
@@ -44,7 +60,7 @@ cross_validation <- function(data,fitter,...,folds=5) {
 
 set.seed(2026)
 s_glm<-cross_validation(data=gp,fitter=fitter)
-s_glm
 
-s_rec <- cross_validation(data=gp,fitter=fitter,f="agh",K=10)      #TODO
+set.seed(2026); s_rec <- cross_validation(gp, fitter, method = "agh", K = 7)
+
 
