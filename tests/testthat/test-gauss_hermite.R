@@ -21,3 +21,90 @@ test_that("nodes are symmetric around 0",{
 test_that("all weights are positive",{
   expect_true(all(gauss_hermite(4)$weights > 0))
 })
+
+test_that("Gauss-Hermite integrates polynomials up to degree 2n-1", {
+  #arbitrary list of various values of n
+  for (n in c(1, 2, 3, 5, 10)) {
+    
+    gh <- gauss_hermite(n)
+    #testing all k in the valid range
+    for (k in 0:(2*n - 1)) {
+      
+      # Gauss-Hermite approximation
+      approximation <- sum(gh$weights * gh$nodes^k)
+      
+      # True integral using integrate()
+      expected <- integrate(
+        function(x) x^k * exp(-x^2),
+        lower = -Inf,
+        upper = Inf
+      )$value
+      
+      expect_equal(
+        approximation,
+        expected,
+        tolerance = 1e-8,
+        info = paste("Failed for n =", n, "and k =", k)
+      )
+    }
+  }
+})
+
+#Tests for gh
+example_theta <- c(0, -0.5, log(0.8))
+
+example_cd <- list(
+  y = c(0,0,1,0,0,0),
+  X = matrix(c(1,1,1,1,1,1,0.1, 0.36, -0.2, 0, -0.23, -0.05), nrow = 6),
+  group = c(1,1,2,2,3,3),
+  J = 3,
+  cluster_size = c(2,2,2)
+)
+
+invalid_cd <- list(
+  y = c(0,0,"1",0,0,0),
+  X = matrix(c(1,1,1,1,1,"one",0.1, 0.36, -0.2, 0, -0.23, -0.05), nrow = 6),
+  group = c(1,1,2,2,3,3),
+  J = 3,
+  cluster_size = c(2,2,2)
+)
+
+
+void_cd <- list(
+  y = c(0,0,1,0,0,NA),
+  X = matrix(c(1,1,NA,1,1,1,0.1, 0.36, -0.2, 0, -0.23, -0.05), nrow = 6),
+  group = c(1,1,2,2,3,3),
+  J = 3,
+  cluster_size = c(2,2,2)
+)
+
+test_that("gh produces correctly formatted output",{
+  expect_true(length(gh(example_theta, example_cd, 4)) == 3)
+})
+
+test_that("gh produces errors for invalid inputs",{
+  expect_error(gh(c(0, "-0.5", log(0.8)), example_cd, 4), regexp = "theta must contain exactly 3 numeric parameters")
+  expect_error(gh(c(-0.5, log(0.8)), example_cd, 4), regexp = "theta must contain exactly 3 numeric parameters")
+  expect_error(gh(example_theta, example_cd, 0), regexp = "K must be a valid positive integer")
+  expect_error(gh(example_theta, invalid_cd, 3), regexp = "All columns in data must be numeric")
+  expect_error(gh(example_theta, void_cd, 3), regexp = "Data must not contain NAs")
+})
+
+test_that("gh agrees with integrate for every cluster",{
+  
+  for (K in c(50,75,100)){
+    gh_test <- gh(example_theta, example_cd, K)
+    
+    true_integral <- vapply(
+      unique(example_cd$group), #used this rather than 1:J because the actual group labels may be different,
+      function (j) cluster_integral(example_theta, example_cd, j),
+      numeric(1) #tells vapply to return exactly one numeric value per iteration (one value per cluster)
+    )
+    
+    expect_equal(
+      unname(gh_test), 
+      true_integral, 
+      tolerance = 1e-8
+    )
+  }
+})
