@@ -72,11 +72,12 @@ cluster_data <- function(y, X, group){
 #'J = an integer representing the number of clusters
 #'
 #'@examples
+#'rint_sim(3, 4, c(1, 0.2), log(0.8))
 #'
 #'@export
 rint_sim <- function(J, m, beta, log_sigma){
   #Generating the random intercepts for each cluster. 1 per cluster.
-  u <- rnorm(J, mean = 0, sd = exp(sigma))
+  u <- rnorm(J, mean = 0, sd = exp(log_sigma))
   
   #Generating the covariates. One covariate per observation.
   #mean = 0 and sd = 1 so utilising rnorm's default
@@ -86,7 +87,7 @@ rint_sim <- function(J, m, beta, log_sigma){
   X <- cbind(intercept = 1, x = x)
   
   #Making a vector to later assign every observation to their appropriate random intercept.
-  group <- rep(1:J, each = M) 
+  group <- rep(1:J, each = m) 
   
   #Calculating the probability of each observation having a response 1
   p <- plogis(drop(X %*% beta) + u[group])
