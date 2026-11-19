@@ -78,16 +78,16 @@ cluster_data <- function(y, X, group){
 rint_sim <- function(J, m, beta, log_sigma){
   #Checking J is a valid integer input
   #cannot check J is explicitly saved as an integer because often it saves it as numeric despite being a valid integer.
-  if (any.NA(J) || is.numeric(J) || J != floor(J)){
+  if (!is.numeric(J) || J != floor(J)){
     stop("J must be an integer")
   }
   
   #Checking m is a valid integer input
-  if (any.NA(m) || is.numeric(m) || m != floor(m)){
+  if (!is.numeric(m) || m != floor(m)){
     stop("m must be an integer")
   }
 
-  if (length(beta) != 2 || !is.numeric(beta)) {
+  if (length(beta) != 2 || !is.numeric(beta) || any(is.na(beta))) {
     stop("beta must contain exactly 2 numeric parameters")
   }
 
