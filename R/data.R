@@ -82,6 +82,19 @@ rint_sim <- function(J, m, beta, log_sigma){
     stop("J must be an integer")
   }
   
+  #Checking m is a valid integer input
+  if (any.NA(m) || is.numeric(m) || m != floor(m)){
+    stop("m must be an integer")
+  }
+
+  if (length(beta) != 2 || !is.numeric(beta)) {
+    stop("beta must contain exactly 2 numeric parameters")
+  }
+
+  if (!is.numeric(log_sigma)) {
+    stop("log_sigma must be a numeric value")
+  }
+  
   #Generating the random intercepts for each cluster. 1 per cluster.
   u <- rnorm(J, mean = 0, sd = exp(log_sigma))
   
