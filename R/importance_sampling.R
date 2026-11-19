@@ -38,8 +38,10 @@ is_draws <- function(cd, R, df = 5) {
 
 # Helper functions for importance_sampling
 # log of the curve height, h_i(b), at a J x R matrix of spots B (row i = practice i)
+
+# This function was AI assisted/adapted: helped suggest most efficient way to create matrix
 log_integrand_matrix <- function(B, beta, sigma, cd) {
-  # stable log(1 + e^z)
+  # stable log(1 + e^z), as suggested by Practical 5 
   softplus <- function(z) pmax(z, 0) + log1p(exp(-abs(z)))  
   # n x R: each patient gets its practice's spots
   eta <- drop(cd$X %*% beta) + B[cd$group,,drop = FALSE]    
@@ -48,6 +50,7 @@ log_integrand_matrix <- function(B, beta, sigma, cd) {
   loglik + stats::dnorm(B, 0, sigma, log = TRUE)
 }
 
+# This function was AI assisted: improved my version of how assignment instructed to implement log-sum-exp
 # log(rowSums(exp(A))) without underflow: factor out each row's largest value
 row_logsumexp <- function(A) {
   amax <- A[cbind(seq_len(nrow(A)), max.col(A, ties.method = "first"))]
@@ -56,6 +59,8 @@ row_logsumexp <- function(A) {
 
 #' Importance Sampling estimate of each clusters log-likelihood
 #'
+#' importance_sampling() was adapted from code from Practical 7
+#' 
 #' Estimates log L_i = log integral with respect to b (f(y_i|b)*phi(b;0, sigma))
 #' for each cluster. The proposal for cluster i is a t distribution centred at
 #' the mode of that cluster's integrand and scaled by its curvature,
