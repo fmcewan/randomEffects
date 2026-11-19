@@ -42,7 +42,7 @@ cluster_data <- function(y, X, group){
   }
   
   #A vector containing all distinct cluster labels
-  cluster_labels <- as.numeric(group)
+  cluster_labels <- as.integer(droplevels(group))
   
   #An integer corresponding to the number of distinct cluster labels
   n_clusters <- length(unique(cluster_labels))
