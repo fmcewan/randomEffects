@@ -76,6 +76,12 @@ cluster_data <- function(y, X, group){
 #'
 #'@export
 rint_sim <- function(J, m, beta, log_sigma){
+  #Checking J is a valid integer input
+  #cannot check J is explicitly saved as an integer because often it saves it as numeric despite being a valid integer.
+  if (any.NA(J) || is.numeric(J) || J != floor(J)){
+    stop("J must be an integer")
+  }
+  
   #Generating the random intercepts for each cluster. 1 per cluster.
   u <- rnorm(J, mean = 0, sd = exp(log_sigma))
   
