@@ -63,23 +63,23 @@ cluster_data <- function(y, X, group){
 #'@param J integer which represents the desired number of clusters
 #'@param m integer which represents the desired number of observations within each cluster
 #'@param beta vector of regression coefficients
-#'@param log_sigma a float log(sigma) where sigma is the standard deviation of the random intercepts
+#'@param sigma a float representing log(sigma) where sigma is the standard deviation of the random intercepts. 
 #'
 #'@return a list containing:
-#'y = a vector of the simulated binary responses, 
-#'X = a vector of the simulated design matrix, 
-#'group = a vector assigning every observation to their cluster
-#'J = an integer representing the number of clusters
+#'  y = a vector of the simulated binary responses, 
+#'  X = a matrix which is the simulated design matrix, 
+#'  group = a vector assigning every observation to their cluster
+#'  J = an integer representing the number of clusters
 #'
 #'@examples
 #'rint_sim(3, 4, c(1, 0.2), log(0.8))
 #'
 #'@export
-rint_sim <- function(J, m, beta, log_sigma){
+rint_sim <- function(J, m, beta, sigma){
   #Checking J is a valid integer input
   #cannot check J is explicitly saved as an integer because often it saves it as numeric despite being a valid integer.
-  if (!is.numeric(J) || J != floor(J)){
-    stop("J must be an integer")
+  if (!is.numeric(J) || J != floor(J) || J < 1){
+    stop("J must be an integer greater than 0")
   }
   
   #Checking m is a valid integer input
@@ -87,16 +87,19 @@ rint_sim <- function(J, m, beta, log_sigma){
     stop("m must be an integer")
   }
 
+  #Checking beta is a valid vector of values of length 2
   if (length(beta) != 2 || !is.numeric(beta) || any(is.na(beta))) {
     stop("beta must contain exactly 2 numeric parameters")
   }
 
-  if (!is.numeric(log_sigma)) {
-    stop("log_sigma must be a numeric value")
+  #Checking sigma (ie log(sigma)) is a numeric value
+  if (!is.numeric(sigma)) {
+    stop("sigma must be a numeric value")
   }
   
   #Generating the random intercepts for each cluster. 1 per cluster.
-  u <- rnorm(J, mean = 0, sd = exp(log_sigma))
+  #Taking exponential of sigma as the sigma provided has already been reparameterised to log(sigma)
+  u <- rnorm(J, mean = 0, sd = exp(sigma))
   
   #Generating the covariates. One covariate per observation.
   #mean = 0 and sd = 1 so utilising rnorm's default

@@ -54,6 +54,9 @@ test_that("rint_sim() fails for invalid J",{
   expect_error(rint_sim("3", m_test, beta_test, log_sigma_test), regexp = "J must be an integer")
   expect_error(rint_sim(NA, m_test, beta_test, log_sigma_test), regexp = "J must be an integer")
   expect_error(rint_sim(3.2, m_test, beta_test, log_sigma_test), regexp = "J must be an integer")
+  expect_error(rint_sim(0, m_test, beta_test, log_sigma_test), regexp = "J must be an integer")
+  expect_error(rint_sim(-1, m_test, beta_test, log_sigma_test), regexp = "J must be an integer")
+  
 })
 
 test_that("rint_sim() fails for invalid m",{
@@ -69,5 +72,5 @@ test_that("rint_sim() fails for invalid beta",{
 })
 
 test_that("rint_sim() fails for invalid log_sigma",{
-  expect_error(rint_sim(J_test, m_test, beta_test, "2"), regexp = "log_sigma must be a numeric value")
+  expect_error(rint_sim(J_test, m_test, beta_test, "2"), regexp = "sigma must be a numeric value")
 })
