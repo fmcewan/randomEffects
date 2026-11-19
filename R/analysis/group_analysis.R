@@ -1,22 +1,44 @@
 # Part D1
 
+library(here)
+group <- 5
+source(here("raw_data", "group_data.R"))
+gp <- group_data(group)
+
+#Functions needed
+
+#data packages
+source(here::here("R","data.R")) #cluster data
+source(here::here("R","cluster_modes.R"))
+source(here::here("R","fit.R")) #fitrint
+source(here::here("R","likelihood.R")) #marginal log-lik
+
+#functions packages
+source(here::here("R","importance_sampling.R")) #is_draws + function
+source(here::here("R","gauss_hermite.R"))
+source(here::here("R","laplace_agh.R")) #agh
+
 #helper to fix data
 make_cd <- function(data) {
-  cluster_data(data$attended, model.matrix(~ age, data = data), droplevels(data$practice))
+  cluster_data(data$attended, model.matrix(~ age, data = data), data$practice)
 }
 
 #set up
 cd <- make_cd(gp)
+
+#set seed and run random draws
 set.seed(2026)
 draws_is <- is_draws(cd,R=100)
 
 #fit methods by fitrint
 fits <- list(
   agh     = fit_rint(cd, "agh", K = 7),
-  #gh      = fit_rint(cd, "gh",  K = 10),   # fails until gh_loglik exists #TODO
+  gh      = fit_rint(cd, "gh",  K = 10),   # fails until gh_loglik exists #TODO
   is      = fit_rint(cd, "is",  draws = draws_is),
   laplace = fit_rint(cd, "laplace")
 )
+
+#cluster modes still not converging
 
 #report estimates with CI
 z <- qnorm(0.975)
