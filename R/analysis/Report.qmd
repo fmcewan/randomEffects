@@ -16,7 +16,6 @@ gp <- group_data(group)
 #| include: false
 #load all functions in package
 devtools::load_all(here::here())
-
 ```
 
 GenAI declaration, README and final render check - (D or E, to be agreed)
