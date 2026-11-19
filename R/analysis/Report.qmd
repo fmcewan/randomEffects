@@ -4,11 +4,19 @@ format: pdf
 ---
 
 ```{r}
-#| include: false
+#required data load to start report
 library(here)
 group <- 5
 source(here("raw_data", "group_data.R"))
 gp <- group_data(group)
+```
+
+```{r}
+#| label: setup
+#| include: false
+#load all functions in package
+devtools::load_all(here::here())
+
 ```
 
 GenAI declaration, README and final render check - (D or E, to be agreed)
@@ -23,7 +31,7 @@ List of functions (each person do their own)
 
 # Part B
 
-## B1 - How many nodes  - ROLE A (5)
+## B1 - How many nodes - ROLE A (5)
 
 - **plot** of log error gh, agh nodes 1-30 vs agh (K=50)
 
@@ -37,15 +45,15 @@ List of functions (each person do their own)
 
 ## B2 - Importance Sampling - Roles below (5)
 
-(C)
+(C) 
 
-- For the m=20 data set, estimate ℓ by importance sampling with R = 10, 30, 100, 300 and 1000 draws, repeating each 200 times with fresh draws. 
+- For the m=20 data set, estimate ℓ by importance sampling with R = 10, 30, 100, 300 and 1000 draws, repeating each 200 times with fresh draws.
 
 - **Plot** the bias and standard deviation of the estimates against R, and compare the standard deviation with your package’s own Monte Carlo SE.
 
 - Explain why the estimate of ℓ=∑jlogLj is biased even though each estimate of Lj is unbiased, and how the bias depends on R **\[at most 100 words\].**
 
-(D)
+(D) 
 
 - Then show what goes wrong if `fit_rint()` draws fresh importance-sampling draws at every evaluation of ℓ.
 
@@ -53,7 +61,7 @@ List of functions (each person do their own)
 
 - **Time** one evaluation of ℓ by each method with `system.time()`, repeating it enough times to give stable timings, for J = 50, 200 and 800 clusters of size 5.
 
-- Compare your vectorised `cluster_modes()` with a version that calls `optimize()` once per cluster, and report the speed-up. 
+- Compare your vectorised `cluster_modes()` with a version that calls `optimize()` once per cluster, and report the speed-up.
 
 - Which method would you use inside an optimiser that needs hundreds of evaluations, and why **\[at most 100 words\]?**
 
@@ -81,25 +89,30 @@ Run the study and present the results in tables and figures, with every performa
 
 Which method would you recommend, for which cluster sizes and amounts of between-cluster variation? Explain the behaviour you see from how each method approximates Lj, linking it to your results in Part B \[at most 300 words\].
 
-(A)
+(A) 
 
 - Behaviour of Gauss-Hermite, from how it approximates Lj, linked to B1.
 
-(B)
+(B) 
 
 - Behaviour of Laplace and adaptive Gauss-Hermite, from how they approximate Lj, linked to B1 and B3.
 
-(C)
+(C) 
 
 - Behaviour of importance sampling, from how it approximates Lj, linked to B2.
 
-(E)
+(E) 
 
 - The recommendation itself: which method, for which cluster sizes and amounts of between-cluster variation (also needed for D1).
 
 # Part D (10 marks)
 
 ## D1 - Analysis - Role E (5 marks)
+
+```{r}
+#| echo: false
+
+```
 
 Fit the model `attended ~ age` with a random intercept for `practice` by the method your study recommends for data like these, and by the other three. Report the estimates with 95% confidence intervals, and interpret the effect of age as an odds ratio and σ in context: for example, compare the predicted attendance probability for a patient of average age at a practice one standard deviation above and below average \[at most 150 words\].
 
