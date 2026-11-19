@@ -1,5 +1,5 @@
 # Part D2
-fitter<- function(train, test,method="glm",K=NULL,draws=NULL) { #default is glm fit
+fitter<- function(train, test,method="glm",K=NULL,draws=NULL) { 
   
   #baseline GLM model
   
@@ -17,7 +17,7 @@ fitter<- function(train, test,method="glm",K=NULL,draws=NULL) { #default is glm 
 
    
   #change data
-  cd_train <- make_cd(train);
+  cd_train <- make_cd(train)
   cd_test <- make_cd(test) #TODO
   
   
@@ -32,7 +32,7 @@ fitter<- function(train, test,method="glm",K=NULL,draws=NULL) { #default is glm 
   fit_train <- fit_rint(cd_train,method,K,draws_train)
   
   # 2. score held-out practices at those estimates (no refitting)
-  marginal_loglik(fit_train$par, cd_test, method, K = K, draws = draws_test)
+  return (marginal_loglik(fit_train$par, cd_test, method, K = K, draws = draws_test))
 }
 
 
