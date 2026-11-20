@@ -6,8 +6,8 @@ beta_true <- c(-0.5, 1)
 sigma_true <- 1.5
 theta0 <- c(beta_true, log(sigma_true))
 
-#! TEMPORARY: swap for rint_sim() + cluster_data() when merged !
-cd20 <- sim_cd(50, 20, beta_true, sigma_true)  
+sim  <- rint_sim(50, 20, beta_true, log(sigma_true))   
+cd20 <- cluster_data(sim$y, sim$X, factor(sim$group))  # cluster_data needs a factor
 
 # Truth
 truth <- sum(agh_loglik(theta0, cd20, K = 50))
@@ -68,7 +68,6 @@ p_sd
 
 
 
-# Plotting currently fails: cluster_modes() does not converge for all sigma
 sigma_grid <- seq(1, 2, length.out = 60)
 Z_fixed <- is_draws(cd20, R = 100)                          # one draw set, reused everywhere
 
@@ -99,23 +98,29 @@ start <- c(unname(coef(glm(cd20$y ~ cd20$X - 1, family = binomial))), 0)
 # Incorrect- new draws every time the optimiser evaluates the likelihood
 nll_fresh <- function(theta) -sum(importance_sampling(theta, cd20, is_draws(cd20, R = 100)))
 
-fresh_fits <- t(sapply(1:5, function(k) {
-  tryCatch({
-    o <- optim(start, nll_fresh, method = "BFGS")
+#function was AI assisted - improved original to return data frame per fit and record conditionMessage(e)
+# so that the reason each fresh draws fit failed is kept
+fresh_fits <- do.call(rbind, lapply(1:5, function(k) {
+  tryCatch({o <- optim(start, nll_fresh, method = "BFGS")
     se <- tryCatch(sqrt(diag(solve(numDeriv::hessian(nll_fresh, o$par)))),
                    error = function(e) rep(NA, 3))
-    c(beta0 = o$par[1], beta1 = o$par[2], sigma = exp(o$par[3]),
-      convergence = o$convergence, evals = unname(o$counts["function"]),
-      se_beta1 = se[2], se_logsigma = se[3], failed = 0)
-  }, error = function(e) c(beta0 = NA, beta1 = NA, sigma = NA, convergence = NA,
-                           evals = NA, se_beta1 = NA, se_logsigma = NA, failed = 1))
+    data.frame(fit = k, beta0 = o$par[1], beta1 = o$par[2], sigma = exp(o$par[3]),
+               convergence = o$convergence, evals = unname(o$counts["function"]),
+               se_beta1 = se[2], se_logsigma = se[3], error = NA)
+  }, error = function(e) {
+    data.frame(fit = k, beta0 = NA, beta1 = NA, sigma = NA,
+               convergence = NA, evals = NA,
+               se_beta1 = NA, se_logsigma = NA,
+               error = conditionMessage(e))       # why it failed
+  })
 }))
 
-# Correct- one fixed draw set, through the package
-
 fixed_fit <- fit_rint(cd20, method = "is", draws = is_draws(cd20, R = 100))
-fixed_row <- c(beta0 = fixed_fit$par[1], beta1 = fixed_fit$par[2], sigma = exp(fixed_fit$par[3]),
-               convergence = fixed_fit$convergence, evals = NA,
-               se_beta1 = fixed_fit$se[2], se_logsigma = fixed_fit$se[3], failed = 0)
 
-round(rbind(fresh_fits, fixed = fixed_row), 3)
+fixed_row <- data.frame(fit = "fixed", beta0 = fixed_fit$par[1], beta1 = fixed_fit$par[2],
+                        sigma = exp(fixed_fit$par[3]), convergence = fixed_fit$convergence,
+                        evals = NA, se_beta1 = fixed_fit$se[2],
+                        se_logsigma = fixed_fit$se[3], error = NA)
+
+rbind(fresh_fits, fixed_row)
+
