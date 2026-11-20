@@ -113,7 +113,7 @@ run_b3_cost <- function(settings = b3_settings) {
   # Preparing datasets and fixed draws before starting timing
   datasets <- lapply(settings$cluster_counts, function(J) {
     rint_sim(J = J, m = settings$m, beta = settings$beta,
-             sigma = settings$sigma)
+             sigma = log(settings$sigma))
   })
   draws <- lapply(datasets, function(cd) {
     is_draws(cd, R = settings$R_is, df = settings$df_is)
