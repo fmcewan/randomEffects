@@ -33,7 +33,7 @@ draws_is <- is_draws(cd,R=100)
 #fit methods by fitrint
 fits <- list(
   agh     = fit_rint(cd, "agh", K = 7),
-  gh      = fit_rint(cd, "gh",  K = 10),   # fails until gh_loglik exists #TODO
+  gh      = fit_rint(cd, "gh",  K = 10),  
   is      = fit_rint(cd, "is",  draws = draws_is),
   laplace = fit_rint(cd, "laplace")
 )
@@ -60,10 +60,6 @@ results <- do.call(rbind,lapply(names(fits), function(m){
 }))
 
 #interpret the effect of age as an odds ratio (do in write up): (this is beta 1 just exponentiate)
-
-
 results
-ls(pattern = "gh")  
 
-gh
-agh_loglik
+
