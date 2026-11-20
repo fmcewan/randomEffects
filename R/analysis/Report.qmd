@@ -25,15 +25,12 @@ List of functions (each person do their own)
 
 ## B1 - How many nodes  - ROLE A (5)
 
-- **plot** of log error gh, agh nodes 1-30 vs agh (K=50)
+![Integration errors at m=20](images/B1_m=20.png)
+![Integration errors at m=2](images/B1_m=2.png)
+Gauss-Hermite (GH) and Adaptive Gauss-Hermite (AGH) generally improve as the number of integration nodes (K) increases. Laplace does not use integration nodes, but rather the mode and curvature so its error does not change for different values of K. 
 
-  - Laplace error horizontal line
+Every additional observation (m) adds another log-likelihood contribution to hj(u). This generally makes the function more concentrated around its mode. This negatively impacted the accuracy of GH, which places its nodes according to the normal weighting function (centred at zero). Therefore, it performed better when m=2. Whereas, AGH adjusts the location and scale of its nodes to the integrand, using its mode and local curvature. This meant AGH performed the best in both cases. It converges faster when m=2 and significantly outdid the other 2 methods when m=20. Laplace performed poorly overall, as its Gaussian approximation does not capture the shape of the integrand well.  
 
-- Repeat at m =2 and explain difference **(150 words)**
-
-  - using shape of exp(hj)
-
-  - and node placement
 
 ## B2 - Importance Sampling - Roles below (5)
 
