@@ -15,11 +15,16 @@ GenAI declaration, README and final render check - (D or E, to be agreed)
 
 # Part A
 
-List of functions (each person do their own)
+gauss_hermite(n):produces Gauss–Hermite nodes and weights for weight function e−x2, by the Golub–Welsch method.
+gh(theta, cd, K): non-adaptive numerical integral based on Gauss-Hermite.
+cluster_integral(theta, cd, j): calculates the true marginal likelihood of a cluster
+cluster_data(y, X, group): prepares and validates the data before calculating the marginal log-likelihood
+rint_sim(J, m, beta, sigma): simulate data according to the model with one standard-normal covariate
+
 
 # Table of tests
 
-(each person do their own)
+ROLE E
 
 # Part B
 
@@ -62,7 +67,11 @@ Compare the four methods as ways of **fitting** the model, using `"agh"` with 7 
 
 - Write the study’s ADEMP \[at most 200 words\].
 
-(A: aims, data-generating mechanism, estimands. C: methods, performance measures, failed fits)
+Aims: Compare the four methods as ways of fitting the model by analysing the performance measures detailed below. 
+Data-generating mechanisms: Simulating the data using rint_sim() with parameters J=50, $\beta$ = (-0.5,1), m = 2, 5 and 20 and $\sigma$ = 0.5 and 1.5. 
+Estimands:$\beta_0$,  $\beta_1$ and $\sigma$. 
+
+(C: methods, performance measures, failed fits)
 
 - Use J=50 clusters, β=(−0.5,1), cluster sizes m = 2, 5 and 20, and σ = 0.5 and 1.5. Your estimands must include β1 and σ, and your performance measures must include bias, empirical standard error, and the coverage of nominal 95% Wald intervals (for σ, built on the logσ scale and back-transformed). Record how often each fit fails to converge, and say how you will handle such fits.
 
