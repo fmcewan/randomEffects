@@ -31,10 +31,9 @@ cluster_loglik <- function(theta, cd, method, K=NULL, draws=NULL) {
 
   validate_method(method)
 
-  # TODO: Replace placeholders with the actual functions to call
   switch(
     method, 
-    "gh" = gh_loglik(theta, cd, K),
+    "gh" = gh(theta, cd, K),
     "laplace" = laplace_loglik(theta, cd),
     "agh" = agh_loglik(theta, cd, K),
     "is" = importance_sampling(theta, cd, draws),
