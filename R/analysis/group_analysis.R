@@ -62,5 +62,8 @@ results <- do.call(rbind,lapply(names(fits), function(m){
 #interpret the effect of age as an odds ratio (do in write up): (this is beta 1 just exponentiate)
 
 
+results
+ls(pattern = "gh")  
 
-  
+gh
+agh_loglik
