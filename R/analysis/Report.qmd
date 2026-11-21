@@ -51,6 +51,22 @@ knitr::kable(tab, col.names = c("File", "Test", "Checks", "Failed", "Skipped", "
 ## B1 - How many nodes
 
 ```{r}
+#| echo: false
+
+#This is dataset load
+
+# Simulation settings
+set.seed(4113)
+beta <- c(1, 0.2)
+theta <- c(beta, log(1.5))
+K <- 1:30
+
+# Generate datasets
+sim_data_20 <- rint_sim(50, 20, beta, log(1.5))
+sim_data_2 <- rint_sim(50, 2, beta, log(1.5))
+```
+
+```{r}
 #| label: fig-b1
 #| fig-cap: "Log integration error against number of nodes"
 #| fig-subcap:
@@ -108,20 +124,10 @@ plot_errors <- function(errors, m) {
     labs(
       x = "Number of integration nodes (K)",
       y = "Absolute error",
-      colour = "Method",
-      title = paste("Integration errors (m =", m, ")")
+      colour = "Method"
     ) 
 }
 
-# Simulation settings
-set.seed(4113)
-beta <- c(1, 0.2)
-theta <- c(beta, log(1.5))
-K <- 1:30
-
-# Generate datasets
-sim_data_20 <- rint_sim(50, 20, beta, log(1.5))
-sim_data_2 <- rint_sim(50, 2, beta, log(1.5))
 
 # Calculate errors
 errors_20 <- calculate_errors(sim_data_20, theta, K)
@@ -376,7 +382,7 @@ knitr::kable(
 )
 ```
 
-We would use adaptive Gauss–Hermite. Its cost is dominated by the vectorised mode search, which it shares with Laplace, so it is only slightly slower per evaluation @tbl-b3-loglik, yet B1 showed it is far more accurate, especially for larger clusters. Laplace is fastest but its error does not shrink, and that bias would carry into the fitted parameters. Non-adaptive Gauss–Hermite is cheap but inaccurate when the integrand is concentrated away from zero. Importance sampling is slowest, scaling with R draws per cluster, and its Monte Carlo noise makes `ℓ` rough, which hampers the optimiser unless the draws are held fixed.
+We would use adaptive Gauss–Hermite. Its cost is dominated by the vectorised mode search, which it shares with Laplace, so it is only slightly slower per evaluation @tbl-b3-loglik, yet @fig-b1 showed it is far more accurate, especially for larger clusters. Laplace is fastest but its error does not shrink, and that bias would carry into the fitted parameters. `gh` is cheap but inaccurate when the integrand is concentrated away from zero. `is` is slowest, scaling with R draws per cluster, and its Monte Carlo noise makes `ℓ` rough, which hampers the optimiser unless the draws are held fixed.
 
 # Part C (25)
 
@@ -404,19 +410,13 @@ Run the study and present the results in tables and figures, with every performa
 
 Which method would you recommend, for which cluster sizes and amounts of between-cluster variation? Explain the behaviour you see from how each method approximates Lj, linking it to your results in Part B \[at most 300 words\].
 
-(A) 
+`gh()` doesn’t do very well for high cluster sizes. When cluster sizes increase, the function becomes more concentrated around its mode (which could no longer be centred at 0). This negatively impacts `gh` because it places its nodes according to the normal weighting function (centred around zero) i.e. it almost looks like a normal distribution with mean 0. @fig-b1
 
-- Behaviour of Gauss-Hermite, from how it approximates Lj, linked to B1.
+`Laplace` instead approximates each practice’s integrand with a normal shape around its peak. `cluster_modes()` finds where that peak is and its curvature, which describes its width. Laplace then uses the peak’s height and width to approximate the integral. It is cheap because it doesn’t evaluate lots of points, but can miss skewness or other departures from a normal shape. It is the quickest method in @tbl-b3-loglik but its absolute error remains constant @fig-b1 and we lost accuracy for the computational simplicity.
 
-(B) 
-
-- Behaviour of Laplace and adaptive Gauss-Hermite, from how they approximate Lj, linked to B1 and B3.
-
-(C) 
+`Adaptive GH` also uses the mode and curvature, but shifts and scales several quadrature points around each practice’s peak. It evaluates the actual integrand at those points and combines the values using corrected weights. This captures more of the shape than `Laplace` and `gh` @fig-b1 but thus takes longer than the other two methods @tbl-b3-loglik.
 
 - Behaviour of importance sampling, from how it approximates Lj, linked to B2.
-
-(E) 
 
 - The recommendation itself: which method, for which cluster sizes and amounts of between-cluster variation (also needed for D1).
 
@@ -539,4 +539,6 @@ knitr::kable(probs, row.names = FALSE, digits = 2,
 
 D2 - Do the practices matter? - Role E(5 marks)
 
-Compare the random-intercept model with a pooled logistic regression, `glm(attended ~ age, family = binomial)`, by 5-fold cross-validation in which each fold holds out **whole practices** (Lecture 11). Score each model by the log-likelihood of the held-out practices’ responses: for the random-intercept model, that is ∑jlogLj over the held-out practices, at the parameters fitted to the other folds. Report both cross-validated scores with their standard errors across folds. Explain why holding out random patients instead would be wrong here \[at most 100 words\].
+```{r}
+
+```
