@@ -15,25 +15,27 @@ GenAI declaration, README and final render check - (D or E, to be agreed)
 
 # Part A
 
-List of functions (each person do their own)
+gauss_hermite(n):produces Gauss–Hermite nodes and weights for weight function e−x2, by the Golub–Welsch method.
+gh(theta, cd, K): non-adaptive numerical integral based on Gauss-Hermite.
+cluster_integral(theta, cd, j): calculates the true marginal likelihood of a cluster
+cluster_data(y, X, group): prepares and validates the data before calculating the marginal log-likelihood
+rint_sim(J, m, beta, sigma): simulate data according to the model with one standard-normal covariate
+
 
 # Table of tests
 
-(each person do their own)
+ROLE E
 
 # Part B
 
 ## B1 - How many nodes  - ROLE A (5)
 
-- **plot** of log error gh, agh nodes 1-30 vs agh (K=50)
+![Integration errors at m=20](images/B1_m=20.png)
+![Integration errors at m=2](images/B1_m=2.png)
+Gauss-Hermite (GH) and Adaptive Gauss-Hermite (AGH) generally improve as the number of integration nodes (K) increases. Laplace does not use integration nodes, but rather the mode and curvature so its error does not change for different values of K. 
 
-  - Laplace error horizontal line
+Every additional observation (m) adds another log-likelihood contribution to hj(u). This generally makes the function more concentrated around its mode. This negatively impacted the accuracy of GH, which places its nodes according to the normal weighting function (centred at zero). Therefore, it performed better when m=2. Whereas, AGH adjusts the location and scale of its nodes to the integrand, using its mode and local curvature. This meant AGH performed the best in both cases. It converges faster when m=2 and significantly outdid the other 2 methods when m=20. Laplace performed poorly overall, as its Gaussian approximation does not capture the shape of the integrand well.  
 
-- Repeat at m =2 and explain difference **(150 words)**
-
-  - using shape of exp(hj)
-
-  - and node placement
 
 ## B2 - Importance Sampling - Roles below (5)
 
@@ -65,7 +67,11 @@ Compare the four methods as ways of **fitting** the model, using `"agh"` with 7 
 
 - Write the study’s ADEMP \[at most 200 words\].
 
-(A: aims, data-generating mechanism, estimands. C: methods, performance measures, failed fits)
+Aims: Compare the four methods as ways of fitting the model by analysing the performance measures detailed below. 
+Data-generating mechanisms: Simulating the data using rint_sim() with parameters J=50, $\beta$ = (-0.5,1), m = 2, 5 and 20 and $\sigma$ = 0.5 and 1.5. 
+Estimands:$\beta_0$,  $\beta_1$ and $\sigma$. 
+
+(C: methods, performance measures, failed fits)
 
 - Use J=50 clusters, β=(−0.5,1), cluster sizes m = 2, 5 and 20, and σ = 0.5 and 1.5. Your estimands must include β1 and σ, and your performance measures must include bias, empirical standard error, and the coverage of nominal 95% Wald intervals (for σ, built on the logσ scale and back-transformed). Record how often each fit fails to converge, and say how you will handle such fits.
 

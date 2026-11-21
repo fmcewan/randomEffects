@@ -43,6 +43,8 @@ gauss_hermite <- function(n) {
 #'   and cluster_size: the number of observations per cluster
 #'@param K number of nodes
 #'
+#'@return a vector containing the log-likelihood for each cluster j
+#'
 #'@examples
 #'example_theta <- c(0, -0.5, log(0.8))
 #'example_cd <- list(
