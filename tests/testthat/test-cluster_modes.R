@@ -2,74 +2,76 @@
 
 # Test data
 cm_cd <- list(
-    y = c(0, 0, 0, 0,  # Practice 1 has all-zero responses
-          1, 1, 1, 1,  # Practice 2 has all-one responses
-          0, 1, 0, 1), # And practice 3 has a mixture
-    X = cbind(1, rep(c(-1, -0.5, 0.5, 1), 3)), group = rep(1:3, each = 4), J = 3)
+              y = c(0, 0, 0, 0,  # Practice 1 has all-zero responses
+                    1, 1, 1, 1,  # Practice 2 has all-one responses
+                    0, 1, 0, 1), # And practice 3 has a mixture
+              X = cbind(1, rep(c(-1, -0.5, 0.5, 1), 3)),
+              group = rep(1:3, each = 4), 
+              J = 3)
 # Test theta, and also extracting some of its contents to avoid repetition
 cm_theta <- c(-0.5, 1, log(0.8))
 beta <- cm_theta[1:2]; sigma <- exp(cm_theta[3])
 
 # TEST 1) Checking if gradient met threshold, and convergence
 test_that("cluster modes have zero gradient", {
-    fit <- cluster_modes(cm_theta, cm_cd)
-    eta <- drop(cm_cd$X %*% beta) + fit$u_hat[cm_cd$group]
-    p <- plogis(eta)
-    gradient <- drop(rowsum(cm_cd$y - p, cm_cd$group, reorder = TRUE)) - fit$u_hat / sigma^2
+  fit <- cluster_modes(cm_theta, cm_cd)
+  eta <- drop(cm_cd$X %*% beta) + fit$u_hat[cm_cd$group]
+  p <- plogis(eta)
+  gradient <- drop(rowsum(cm_cd$y - p, cm_cd$group, reorder = TRUE)) - fit$u_hat / sigma^2
 
-    # First checking converged, and appropriateness of outputs u and H
-    expect_true(fit$converged)
-    expect_length(fit$u_hat, cm_cd$J)
-    expect_length(fit$H, cm_cd$J)
-    expect_true(all(is.finite(fit$u_hat)))
-    expect_true(all(is.finite(fit$H)))
-    expect_true(all(fit$H > 0))
+  # First checking converged, and appropriateness of outputs u and H
+  expect_true(fit$converged)
+  expect_length(fit$u_hat, cm_cd$J)
+  expect_length(fit$H, cm_cd$J)
+  expect_true(all(is.finite(fit$u_hat)))
+  expect_true(all(is.finite(fit$H)))
+  expect_true(all(fit$H > 0))
 
-    # Checking derivative is small enough
-    expect_lt(max(abs(gradient)), 1e-7)
+  # Checking derivative is small enough
+  expect_lt(max(abs(gradient)), 1e-7)
 })
 
 
 # TEST 2) Verifying with independent calculation
 # Maximising with optimize() then computing Hessian (adapted from Practical 7)
 test_that("modes and curvatures agree with independent calculations", {
-    fit <- cluster_modes(cm_theta, cm_cd)
+  fit <- cluster_modes(cm_theta, cm_cd)
 
-    # Looping over practices (just for testing)
-    for (j in seq_len(cm_cd$J)) {
-        patients <- cm_cd$group == j
+  # Looping over practices (just for testing)
+  for (j in seq_len(cm_cd$J)) {
+    patients <- cm_cd$group == j
 
-        # Log-integrand for this practice only (adapted h_j() from practical 7)
-        h_j <- function(u) {
-            eta <- drop(cm_cd$X[patients, , drop = FALSE] %*% beta) + u
-            sum(dbinom(cm_cd$y[patients], size = 1, prob = plogis(eta), log = TRUE)) + 
-            dnorm(u, mean = 0, sd = sigma, log = TRUE)
-        }
-        # Using optimize and numDeriv to maximise h_j and compute its curvature
-        reference <- optimize(h_j, interval = c(-10, 10), maximum = TRUE, tol = 1e-10)
-        reference_H <- -numDeriv::hessian(h_j, reference$maximum)[1, 1]
-
-        # Checking if u,H found by cluster_modes are close enough to the one found using optimize
-        expect_equal(unname(fit$u_hat[j]), reference$maximum, tolerance = 1e-5)
-        expect_equal(unname(fit$H[j]), reference_H, tolerance = 1e-5)
+    # Log-integrand for this practice only (adapted h_j() from practical 7)
+    h_j <- function(u) {
+      eta <- drop(cm_cd$X[patients, , drop = FALSE] %*% beta) + u
+      sum(dbinom(cm_cd$y[patients], size = 1, prob = plogis(eta), log = TRUE)) + 
+        dnorm(u, mean = 0, sd = sigma, log = TRUE)
     }
+    # Using optimize and numDeriv to maximise h_j and compute its curvature
+    reference <- optimize(h_j, interval = c(-10, 10), maximum = TRUE, tol = 1e-10)
+    reference_H <- -numDeriv::hessian(h_j, reference$maximum)[1, 1]
+
+    # Checking if u,H found by cluster_modes are close enough to the one found using optimize
+    expect_equal(unname(fit$u_hat[j]), reference$maximum, tolerance = 1e-5)
+    expect_equal(unname(fit$H[j]), reference_H, tolerance = 1e-5)
+  }
 })
 
 
 # TEST 3) Check "extreme-valued" practices with larger variation.
 test_that("extreme response patterns work with larger sigma", {
-    # Defining new theta (larger variation)
-    theta <- c(-0.5, 1, log(5))
-    fit <- cluster_modes(theta, cm_cd)
+  # Defining new theta (larger variation)
+  theta <- c(-0.5, 1, log(5))
+  fit <- cluster_modes(theta, cm_cd)
 
-    # Standard checks as in Test 1
-    expect_true(fit$converged)
-    expect_true(all(is.finite(fit$u_hat)))
-    expect_true(all(is.finite(fit$H)))
-    expect_true(all(fit$H > 0))
+  # Standard checks as in Test 1
+  expect_true(fit$converged)
+  expect_true(all(is.finite(fit$u_hat)))
+  expect_true(all(is.finite(fit$H)))
+  expect_true(all(fit$H > 0))
 
-    expect_lt(fit$u_hat[1], 0) # All-zero practice should have a negative effect
-    expect_gt(fit$u_hat[2], 0) # All-one practice should have a positive effect
+  expect_lt(fit$u_hat[1], 0) # All-zero practice should have a negative effect
+  expect_gt(fit$u_hat[2], 0) # All-one practice should have a positive effect
 })
 
 
@@ -89,4 +91,54 @@ test_that("invalid inputs produce informative errors", {
 
   # Negative tolerance
   expect_error(cluster_modes(cm_theta, cm_cd, tol = -1), regexp = "tol must be positive")
+})
+
+# Extra tests to check convergence on larger clusters
+
+# Constructing one reproducible dataset with larger clusters
+set.seed(123)
+large_cd <- list(X = cbind(1, rnorm(50 * 100)),
+                 group = rep(1:50,
+                 each = 100),
+                 J = 50L)
+large_theta <- c(-0.5, 1, log(1.5)); u <- rnorm(50, sd = 1.5)
+eta <- drop(large_cd$X %*% large_theta[1:2]) + u[large_cd$group]
+large_cd$y <- rbinom(length(eta), 1, plogis(eta))
+
+# TEST 5) Testing larger clusters and respective gradients
+test_that("large clusters converge with small final gradients", {
+
+  fit <- cluster_modes(large_theta, large_cd)
+  eta <- drop(large_cd$X %*% large_theta[1:2]) + fit$u_hat[large_cd$group]
+
+  gradient <- drop(rowsum(large_cd$y - plogis(eta), large_cd$group)) - fit$u_hat / 1.5^2
+
+  expect_true(fit$converged)
+  expect_true(all(is.finite(fit$H) & fit$H > 0))
+  expect_true(max(abs(gradient)) <= 1e-8)
+})
+
+# TEST 6) Independent accuracy check
+test_that("large-cluster modes agree with independent roots", {
+
+  fit <- cluster_modes(large_theta, large_cd)
+
+  for (j in seq_len(large_cd$J)) {
+
+    patients <- large_cd$group == j
+    fixed <- drop(large_cd$X[patients, , drop = FALSE] %*% large_theta[1:2])
+
+    score <- function(u) {
+      sum(large_cd$y[patients] - plogis(fixed + u)) - u / 1.5^2
+    }
+
+    bound <- sum(patients) * 1.5^2 + 1
+    reference <- uniroot(score, c(-bound, bound), tol = 1e-12)$root
+
+    expect_equal(
+      unname(fit$u_hat[j]), reference,
+      tolerance = 1e-7,
+      info = paste("practice", j)
+    )
+  }
 })
