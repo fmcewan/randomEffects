@@ -10,7 +10,7 @@ sim  <- rint_sim(50, 20, beta_true, log(sigma_true))
 cd20 <- cluster_data(sim$y, sim$X, factor(sim$group))  # cluster_data needs a factor
 
 # Truth
-truth <- sum(agh_loglik(theta0, cd20, K = 50))
+truth <- marginal_loglik(theta0, cd20, method = "agh", K = 50)
 
 #Repeat IS 200 times for each R
 Rs <- c(10, 30, 100, 300, 1000)
