@@ -44,8 +44,21 @@ Notice in @tbl-tests that all tests pass as required.
 #| echo: false
 
 res <- devtools::test(reporter = "silent")
-tab <- as.data.frame(res)[, c("file", "test", "nb", "failed", "skipped", "error")]
-knitr::kable(tab, col.names = c("File", "Test", "Checks", "Failed", "Skipped", "Error"))
+df  <- as.data.frame(res)
+df$file <- sub("^test-", "", sub("\\.R$", "", df$file))
+
+tab <- do.call(rbind, lapply(split(df, df$file), function(d) data.frame(
+  File    = d$file[1],
+  Tests   = nrow(d),
+  Checks  = sum(d$nb),
+  Failed  = sum(d$failed),
+  Skipped = sum(d$skipped),
+  Errors  = sum(d$error)
+)))
+tab <- rbind(tab, data.frame(File = "Total", t(colSums(tab[, -1]))))
+rownames(tab) <- NULL
+
+knitr::kable(tab, booktabs = TRUE, align = "lrrrrr")
 ```
 
 # Part B
@@ -66,11 +79,14 @@ theta <- c(beta, log(sigma))
 ```
 
 ```{r}
+#| label: fig-b1
+#| echo: false
 #| fig-cap: "Log integration error against number of nodes showing ranking agh>gh>laplace"
 #| fig-subcap:
-  #|   - "m = 20"
-  #|   - "m = 50"
+#|   - "m = 20"
+#|   - "m = 50"
 #| layout-ncol: 2
+
 
 #B1
 K <- 1:30
@@ -210,8 +226,8 @@ profile_df <- data.frame(
 #| label: fig-b2
 #| fig-cap: "Importance sampling estimate of the log-likelihood ($m = 20$, 200 repetitions per $R$)"
 #| fig-subcap:
-  #|   - "Bias, with $\\pm 2$ Monte Carlo SE bars; dashed line is the Jensen prediction $-\\mathrm{SE}^2/2$"
-  #|   - "SD across repetitions vs the package's mean reported MC SE"
+#|   - "Bias, with $\\pm 2$ Monte Carlo SE bars; dashed line is the Jensen prediction $-\\mathrm{SE}^2/2$"
+#|   - "SD across repetitions vs the package's mean reported MC SE"
 #| layout-ncol: 2
 #| echo: false
 
