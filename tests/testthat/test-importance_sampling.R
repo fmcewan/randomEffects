@@ -13,6 +13,7 @@ test_that("is_draws is reproducible with a seed", {
   expect_false(identical(Z1, Z3))
 })
 
+# Test was AI suggested
 test_that("is_draws draws come from the t distribution", {
   set.seed(2)
   Z <- is_draws(list(J = 10), R = 10000, df = 5)
@@ -57,6 +58,7 @@ test_that("with fixed draws the estimate is smooth in theta", {
   expect_lt(abs(change), 1e-3)  # a tiny step in theta gives a tiny change
 })
 
+# Test was AI suggested
 test_that("the MC SE halves when R is quadrupled", {
   set.seed(13)
   cd <- sim_cd(30, 8, c(-0.5, 1), 1.5)
