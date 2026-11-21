@@ -50,14 +50,14 @@ fit_method <- function(cd, method, truth, K = NULL, draws = NULL) {
   )
 }
 
-simulate_replicate <- function(replicate, scenario, J, beta, seed) {
+simulate_replicate <- function(replicate, scenario, J, beta, seed, specifications) {
   
   # Set unique seed for each replicate 
   set.seed(seed+100000*scenario$id+replicate)
   
   # Define necessary variables 
-  simulation <- rint_sim(J, scenario$m, beta, scenario$sigma)
-  cd <- cluster_data(simulation$y, simulation$X, simulation$group)
+  simulation <- rint_sim(J, scenario$m, beta, log(scenario$sigma))
+  cd <- cluster_data(simulation$y, simulation$X, factor(simulation$group))
   R = specifications$R[specifications$method == "is"] 
   draws <- is_draws(cd, R=R)
   truth <- c(beta[2], scenario$sigma)
@@ -73,6 +73,7 @@ simulate_replicate <- function(replicate, scenario, J, beta, seed) {
   
   # Put the scenaro deatils in front of every row 
   cbind(rep = replicate, m=scenario$m, sigma=scenario$sigma, results)
+
 }
 
 run_task <- function(i, tasks, scenarios, specifications, J, beta, seed) {
@@ -81,19 +82,22 @@ run_task <- function(i, tasks, scenarios, specifications, J, beta, seed) {
 
 run_study <- function(number_of_replicates, J = 50, beta = c(-0.5, 1), seed = 2026,
                       cores = max(1, parallel::detectCores() - 1)) {
-
+  
+  # Build scenarios 
   scenarios <- expand.grid(m = c(2, 5, 20), sigma = c(0.5, 1.5))
   scenarios$id <- seq_len(nrow(scenarios))
 
-  tasks <- expand.grid(scenario = seq_len(nrow(scenarios)),
-                       rep = seq_len(number_of_replicates))
+  # Add tasks 
+  tasks <- expand.grid(scenario = seq_len(nrow(scenarios)), rep = seq_len(number_of_replicates))
   tasks <- tasks[order(tasks$scenario, tasks$rep), ]
-
+  
+  # Define cluster 
   cluster <- parallel::makeCluster(cores)
   on.exit(parallel::stopCluster(cluster))
   parallel::clusterEvalQ(cluster, library(randomEffects))
   parallel::clusterExport(cluster, c("fit_method", "simulate_replicate", "run_task"))
-
+  
+  # Use parallelism to speed up results generation
   results <- parallel::parLapplyLB(
     cluster, seq_len(nrow(tasks)), run_task,
     tasks = tasks, scenarios = scenarios, specifications = specifications,
@@ -101,4 +105,6 @@ run_study <- function(number_of_replicates, J = 50, beta = c(-0.5, 1), seed = 20
   )
 
   do.call(rbind, results)
+
 }
+

@@ -4,17 +4,19 @@
 \alias{cluster_modes}
 \title{Finding cluster modes and curvatures}
 \usage{
-cluster_modes(theta, cd, tol = 1e-08, maxit = 100)
+cluster_modes(theta, cd, tol = 1e-06, maxit = 100)
 }
 \arguments{
 \item{theta}{Vector containing:
 one regression coefficient per column,
-followed by log(sigma), where sigma is the standard deviation of the random intercepts}
+followed by log(sigma),
+where sigma is the standard deviation of the random intercepts}
 
 \item{cd}{List containing:
 y: a numeric vector of binary responses,
 X: a finite numeric model matrix with one row per response,
-group: Holds integer identifiers (from 1 to J) matching patient to practice,
+group: Holds integer identifiers (from 1 to J)
+matching patient to practice,
 and J: the number of clusters (int)}
 
 \item{tol}{First derivative tolerance threshold, default = 1e-8}
@@ -35,8 +37,10 @@ Finding the mode of each cluster's intercept and the
 negative second derivative of its log-integrand (objective) at that mode
 }
 \details{
-All cluster modes are updated simultaneously using Newton's method with analytic derivatives
-Backtracking is applied separately to each cluster to ensure sufficient increase in objective
+All cluster modes are updated simultaneously
+using Newton's method with analytic derivatives
+Backtracking is applied separately to each cluster
+to ensure sufficient increase in objective
 The input coefficients and random-intercept standard deviation are fixed
 Convergence requires every absolute first derivative to be at most tol
 }
@@ -51,5 +55,5 @@ theta <- c(-0.5, 1, log(0.8))
 fit <- cluster_modes(theta, cd)
 fit$u_hat
 fit$H
- 
+
 }

@@ -1,6 +1,14 @@
 # negative_loglik
 negative_loglik <- function(theta, cd, lik_method,  K, draws) {
-  -marginal_loglik(theta, cd, lik_method, K, draws)
+  tryCatch(
+    -marginal_loglik(theta, cd, lik_method, K, draws),
+    error = function(e) {
+      if (grepl("Newton backtracking|did not converge|Non-finite derivatives|numerical range", conditionMessage(e))) {
+        return(Inf)
+      }
+      stop(e)
+    }
+  )  
 }
 
 #' Fit a random intercept logistic regression
