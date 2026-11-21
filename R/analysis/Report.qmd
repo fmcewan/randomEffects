@@ -1,6 +1,8 @@
 ---
 title: "Report"
-format: pdf
+format:
+  pdf:
+    code-overflow: wrap
 ---
 
 ```{r}
@@ -53,17 +55,14 @@ knitr::kable(tab, col.names = c("File", "Test", "Checks", "Failed", "Skipped", "
 ```{r}
 #| echo: false
 
-#This is dataset load
+#This is dataset load to ensure all randomness is seeded
 
 # Simulation settings
 set.seed(4113)
-beta <- c(1, 0.2)
-theta <- c(beta, log(1.5))
-K <- 1:30
+beta <- c(-0.5,1)
+sigma <- 1.5
+theta <- c(beta, log(sigma))
 
-# Generate datasets
-sim_data_20 <- rint_sim(50, 20, beta, log(1.5))
-sim_data_2 <- rint_sim(50, 2, beta, log(1.5))
 ```
 
 ```{r}
@@ -76,6 +75,12 @@ sim_data_2 <- rint_sim(50, 2, beta, log(1.5))
 #| echo: false
 
 #B1
+K <- 1:30
+
+# Generate datasets
+sim_data_20 <- rint_sim(50, 20, beta, log(1.5))
+sim_data_2 <- rint_sim(50, 2, beta, log(1.5))
+
 calculate_errors <- function(sim_data, theta, K) {
   
   # Use adaptive Gauss-Hermite with 50 nodes as the reference
@@ -153,12 +158,10 @@ Every additional observation `m` adds another log-likelihood contribution to `hj
 #| include: false
 #| cache: true
 
-set.seed(4113)
-beta_true <- c(-0.5, 1)
-sigma_true <- 1.5
-theta0 <- c(beta_true, log(sigma_true))
 
-sim  <- rint_sim(50, 20, beta_true, log(sigma_true))
+theta0 <- c(beta, log(sigma))
+
+sim  <- rint_sim(50, 20, beta, log(sigma))
 cd20 <- cluster_data(sim$y, sim$X, factor(sim$group))
 
 truth <- marginal_loglik(theta0, cd20, method = "agh", K = 50)
@@ -206,6 +209,8 @@ profile_df <- data.frame(
 
 ```
 
+Notice in @fig-b2-1 that the bias of the `is` method decreases as we take more draws before settling at 0 for $R=1000$, the SD closely tracks the mean reported MCSE, both linearly decreasing on the log-scale in @fig-b2-2.
+
 ```{r}
 #| label: fig-b2
 #| fig-cap: "Importance sampling estimate of the log-likelihood (m = 20, 200 repetitions per R)"
@@ -232,6 +237,8 @@ ggplot(spread, aes(R, value, colour = measure)) +
 
 ```
 
+When `fitrint()` draws fresh draws at every evaluation in @fig-b2-crn, we see our likelihood approximation is very jagged, whereas reusing the same draws gives a a smooth curve. Further in @tbl-b2-fits notice the fresh draws error in all 5 scenarios as generally our Newton backtracking step condition fails, but when draws are fixed we don't see an error.
+
 ```{r}
 #| label: fig-b2-crn
 #| fig-cap: "IS log-likelihood (R = 100) as σ varies with β fixed at the truth: reusing the same draws gives a smooth curve, fresh draws at each evaluation give a jagged one"
@@ -252,8 +259,6 @@ ggplot(profile_df, aes(sigma, ell, colour = draws)) +
 #| include: false
 #| cache: true
 #| dependson: b2-run
-
-set.seed(2027)
 
 # Starting values as in fit_rint(): pooled logistic regression, log sigma = 0
 start <- c(unname(coef(glm(cd20$y ~ cd20$X - 1, family = binomial))), 0)
@@ -317,7 +322,7 @@ knitr::kable(
 b3_settings <- list(
   cluster_counts = c(50, 200, 800),
   m = 5,                          # Patients per practice
-  beta = c(-0.5, 1), sigma = 1.5, # Theta
+  beta = beta, sigma = sigma, # Theta
   K_gh = 10, K_agh = 7,           # Nodes
   R_is = 100, df_is = 4,          # For importance sampling
   min_seconds = 0.2,              # For stable timings
@@ -553,7 +558,7 @@ Choose the number of replicates so that the Monte Carlo standard error of each c
 
 Run the study and present the results in tables and figures, with every performance measure given with its Monte Carlo standard error. Report the time each method took.
 
-## C4 - Recommendations - Roles below (7)
+## C4 - Recommendations
 
 Which method would you recommend, for which cluster sizes and amounts of between-cluster variation? Explain the behaviour you see from how each method approximates Lj, linking it to your results in Part B \[at most 300 words\].
 
@@ -771,4 +776,13 @@ d2_tab <- data.frame(
 )
 
 knitr::kable(d2_tab, digits = 2, col.names = c("Model", "CV score", "SE"))
+```
+
+```{r}
+# Appendix: Code
+#| label: appendix
+#| ref.label: !expr setdiff(knitr::all_labels(), "appendix")
+#| echo: true
+#| eval: false
+
 ```
