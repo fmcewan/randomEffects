@@ -67,9 +67,6 @@ knitr::kable(tab, booktabs = TRUE, align = "lrrrrr")
 
 ```{r}
 #| echo: false
-
-#This is dataset load to ensure all randomness is seeded
-
 # Simulation settings
 set.seed(4113)
 beta <- c(-0.5,1)
@@ -161,9 +158,9 @@ print(p20)
 print(p2)
 ```
 
-In @fig-b1-1 `Gauss-Hermite (GH)` and `Adaptive Gauss-Hermite (AGH)` generally improve as the number of integration nodes `K` increases. `Laplace` does not use integration nodes, but rather the mode and curvature so its error does not change for different values of `K`.
+In @fig-b1-1 `Gauss-Hermite (gh)` and `Adaptive Gauss-Hermite (agh)` generally improve as the number of integration nodes $K$ increases. `Laplace` does not use integration nodes, but rather the mode and curvature so its error does not change for different values of $K$.
 
-Every additional observation `m` adds another log-likelihood contribution to `hj(u)`. This generally makes the function more concentrated around its mode. This negatively impacts the accuracy of `GH`, which places its nodes according to the normal weighting function (centered at zero). Therefore, it performs better when `m=2` in @fig-b1-2. Whereas, `AGH` adjusts the location and scale of its nodes to the integrand, using its mode and local curvature. Therefore `AGH` performed the best in both cases. It converges faster when `m=2` and significantly outdid the other 2 methods when `m=20`. `Laplace` performed poorly overall, as its Gaussian approximation does not capture the shape of the integrand well.
+Every additional observation $m$ adds another log-likelihood contribution to $h_j(u)$. This generally makes the function more concentrated around its mode. This negatively impacts the accuracy of `gh`, which places its nodes according to the normal weighting function (centered at zero). Therefore, it performs better when $m=2$ in @fig-b1-2. Whereas, `agh` adjusts the location and scale of its nodes to the integrand, using its mode and local curvature. Therefore `AGH` performed the best in both cases. It converges faster when `m=2` and significantly outdid the other 2 methods when $m=20$. `laplace` performed poorly overall, as its Gaussian approximation does not capture the shape of the integrand well.
 
 ## B2 - Importance Sampling
 
@@ -248,13 +245,13 @@ ggplot(spread, aes(R, value, colour = measure)) +
 
 ```
 
-Notice in @fig-b2-1 that the bias of the `is` method decreases as we take more draws before settling at 0 for $R=1000$. The SD across 200 repetitions and the package's mean reported Monte Carlo SE agree to within `r round(100 * max(abs(results$sd / results$mean_mc_se - 1)))`% at every $R$, as shown in @fig-b2-2; for example, at $R = 100$ the SD is `r round(results$sd[3], 3)` and the MC SE is `r round(results$mean_mc_se[3], 3)`.
+Notice in @fig-b2-1 that the bias of the `is` method decreases as we take more draws before settling at $0$ for $R=1000$. The SD across $200$ repetitions and the package's mean reported Monte Carlo SE agree to within `r round(100 * max(abs(results$sd / results$mean_mc_se - 1)))`% at every $R$, as shown in @fig-b2-2; for example, at $R = 100$ the SD is `r round(results$sd[3], 3)` and the MCSE is `r round(results$mean_mc_se[3], 3)`.
 
 When `fitrint()` draws fresh draws at every evaluation in @fig-b2-crn, we see our likelihood approximation is very jagged, whereas reusing the same draws gives a a smooth curve. Further in @tbl-b2-fits notice the fresh draws error in all 5 scenarios as generally our Newton backtracking step condition fails, but when draws are fixed we don't see an error.
 
 ```{r}
 #| label: fig-b2-crn
-#| fig-cap: "IS log-likelihood (R = 100) as σ varies with β fixed at the truth: reusing the same draws gives a smooth curve, fresh draws at each evaluation give a jagged one"
+#| fig-cap: "IS log-likelihood (R = 100) as $\\σ$ varies with $\\β$ fixed at the truth: reusing the same draws gives a smooth curve, fresh draws at each evaluation give a jagged one"
 #| echo: false
 #| fig-width: 6
 #| fig-height: 3.5
@@ -345,7 +342,7 @@ knitr::kable(
 ## B3 - Cost
 
 ```{r}
-#|echo: false
+#| echo: false
 # Default settings (to be able to pass this as one variable later)
 b3_settings <- list(
   cluster_counts = c(50, 200, 800),
