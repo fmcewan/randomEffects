@@ -15,11 +15,24 @@ GenAI declaration, README and final render check - (D or E, to be agreed)
 
 # Part A
 
-gauss_hermite(n):produces Gauss–Hermite nodes and weights for weight function e−x2, by the Golub–Welsch method. gh(theta, cd, K): non-adaptive numerical integral based on Gauss-Hermite. cluster_integral(theta, cd, j): calculates the true marginal likelihood of a cluster cluster_data(y, X, group): prepares and validates the data before calculating the marginal log-likelihood rint_sim(J, m, beta, sigma): simulate data according to the model with one standard-normal covariate
+- `gauss_hermite(n)`:produces Gauss–Hermite nodes and weights for weight function e−x2, by the Golub–Welsch method.
+
+- `gh(theta, cd, K)`: non-adaptive numerical integral based on Gauss-Hermite.
+
+- `cluster_integral(theta, cd, j)`: calculates the true marginal likelihood of a cluster
+
+- `cluster_data(y, X, group)`: prepares and validates the data before calculating the marginal log-likelihood
+
+- `rint_sim(J, m, beta, sigma)`: simulate data according to the model with one standard-normal covariate
 
 # Table of tests
 
-ROLE E
+```{r}
+#| echo: false
+res <- devtools::test(reporter = "silent")
+tab <- as.data.frame(res)[, c("file", "test", "nb", "failed", "skipped", "error")]
+knitr::kable(tab, col.names = c("File", "Test", "Checks", "Failed", "Skipped", "Error"))
+```
 
 # Part B
 
