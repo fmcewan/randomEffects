@@ -75,11 +75,99 @@ Estimands:$\beta_0$,  $\beta_1$ and $\sigma$.
 
 - Use J=50 clusters, β=(−0.5,1), cluster sizes m = 2, 5 and 20, and σ = 0.5 and 1.5. Your estimands must include β1 and σ, and your performance measures must include bias, empirical standard error, and the coverage of nominal 95% Wald intervals (for σ, built on the logσ scale and back-transformed). Record how often each fit fails to converge, and say how you will handle such fits.
 
+```{r}
+#| include: false
+library(randomEffects)
+study <- readRDS(here("results", "study.rds"))
+
+pilot <- summarise_study(study[study$rep <= 50, ])
+first500 <- summarise_study(study[study$rep <= 500, ])
+final <- summarise_study(study)
+
+max_se <- tapply(pilot$emp_se, pilot$param, max)
+p_worst <- min(first500$coverage)
+n_cov <- ceiling(0.95 * 0.05 / 0.01^2)
+n_cov_worst <- ceiling(p_worst * (1 - p_worst) / 0.01^2)
+n_bias_beta <- ceiling((unname(max_se["beta1"]) / 0.05)^2)
+n_bias_sigma <- ceiling((unname(max_se["sigma"]) / 0.1)^2)
+```
+
 ## C2 - Number of replicates - Role D (4)
 
-Choose the number of replicates so that the Monte Carlo standard error of each coverage is at most 1 percentage point, and that of each bias is small enough to detect the differences you care about. **Show the calculation, using a pilot run if you need one.**
+The Monte Carlo standard error (MCSE) of an estimated coverage $p$ is $\sqrt{p(1-p)/n}$. For it to at most 0.01 with $p=0.95$, we need to have $n \ge 0.95 \times 0.05/(0.01)^2 = 475$. The MCSE of a bias is $SD/\sqrt(n)$, so to detect a difference of $\delta$, so we need $n \ge (SD/\delta)^2$.
+
+In a pilot of 50 replicates, the largest empircal standard errors (SEs) were 0.35 for $\beta_1$ and 1.05 for $\sigma$, where $m=2$ and $\sigma=1.5$). Therefore, detecting a difference of 0.05 in $beta_1$ and 1.04 for $sigma$ requires $n \ge 49$ and $n \ge 110$.
+
+Coverage was therfore the more demanding requirement, so we based the number of replicates for the study on it. We first ran 500 replicates; however, in that run, some cells well below the required 0.95 coverage. The lowest cell was 0.886 for $\sigma$ at $m=2$ and $\sigma = 0.05$ with MCSE 0.014, and so using this worst case we could work out $n \ge 0.886x0.0114/0.01^2 \approx 1010$. We therefore ran 1100 replicates in the final run, and the target coverage was met. 
 
 ## C3 - Results - Role D (8)
+
+```{r}
+#| include: false
+perf_table <- function(s, param) {
+  s$bias_txt <- sprintf("%.3f (%.3f)", s$bias, s$bias_mcse)
+  s$se_txt   <- sprintf("%.3f (%.3f)", s$emp_se, s$emp_se_mcse)
+  s$cov_txt  <- sprintf("%.3f (%.3f)", s$coverage, s$coverage_mcse)
+  tab <- s[s$param == param, c("m", "sigma", "method", "bias_txt", "se_txt", "cov_txt")]
+  tab[order(tab$sigma, tab$m, tab$method), ]
+}
+
+coverage_plot <- function(s, param) {
+  methods <- c("laplace", "gh", "agh", "is")
+  par(mfrow = c(2, 3), mar = c(4, 4, 3, 1))
+  for (sg in c(0.5, 1.5)) {
+    for (mm in c(2, 5, 20)) {
+      d <- s[s$param == param & s$sigma == sg & s$m == mm, ]
+      d <- d[match(methods, d$method), ]
+      lo <- d$coverage - 1.96 * d$coverage_mcse
+      hi <- d$coverage + 1.96 * d$coverage_mcse
+      plot(1:4, d$coverage, ylim = c(0.84, 1), xaxt = "n", xlab = "", ylab = "Coverage",
+           main = paste0("m = ", mm, ", sigma = ", sg), pch = 19)
+      axis(1, at = 1:4, labels = methods)
+      segments(1:4, lo, 1:4, hi)
+      abline(h = 0.95, lty = 2)
+    }
+  }
+}
+
+tab_cols <- c("m", "σ", "Method", "Bias (MCSE)", "Empirical SE (MCSE)", "Coverage (MCSE)")
+```
+
+```{r}
+#| echo: false
+#| tbl-cap: "Performance for $\\beta_1$. Monte Carlo SE in brackets."
+knitr::kable(perf_table(final, "beta1"), row.names = FALSE, col.names = tab_cols)
+```
+
+```{r}
+#| echo: false
+#| tbl-cap: "Performance for $\\sigma$. Monte Carlo SE in brackets."
+knitr::kable(perf_table(final, "sigma"), row.names = FALSE, col.names = tab_cols)
+```
+
+```{r}
+#| echo: false
+#| fig-height: 6
+#| fig-cap: "Coverage of nominal 95% Wald intervals for $\\beta_1$, with $\\pm 1.96$ Monte Carlo SE. Dashed line at 0.95."
+coverage_plot(final, "beta1")
+```
+
+```{r}
+#| echo: false
+#| fig-height: 6
+#| fig-cap: "Coverage of nominal 95% Wald intervals for $\\sigma$, with $\\pm 1.96$ Monte Carlo SE. Dashed line at 0.95."
+coverage_plot(final, "sigma")
+```
+
+```{r}
+#| echo: false
+#| tbl-cap: "Mean time per fit in seconds (Monte Carlo SE in brackets)."
+tb <- study[study$param == "beta1", ]
+t_mean <- tapply(tb$time, list(tb$method, tb$m), mean)
+t_se <- tapply(tb$time, list(tb$method, tb$m), sd) / sqrt(tapply(tb$time, list(tb$method, tb$m), length))
+t_txt <- matrix(sprintf("%.2f (%.2f)", t_mean, t_se), nrow = nrow(t_mean), dimnames = dimnames(t_mean))
+knitr::kable(t_txt[c("laplace", "gh", "agh", "is"), ], col.names = paste0("m = ", colnames(t_txt)))
+```
 
 Run the study and present the results in tables and figures, with every performance measure given with its Monte Carlo standard error. Report the time each method took.
 

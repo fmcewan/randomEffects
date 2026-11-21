@@ -4,7 +4,7 @@
 \alias{cluster_modes}
 \title{Finding cluster modes and curvatures}
 \usage{
-cluster_modes(theta, cd, tol = 1e-06, maxit = 100)
+cluster_modes(theta, cd, tol = 1e-08, maxit = 100)
 }
 \arguments{
 \item{theta}{Vector containing:
