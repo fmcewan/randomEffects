@@ -6,6 +6,7 @@ format: pdf
 ```{r}
 #| include: false
 library(here)
+library(ggplot2)
 group <- 5
 source(here("raw_data", "group_data.R"))
 gp <- group_data(group)
@@ -27,8 +28,13 @@ GenAI declaration, README and final render check - (D or E, to be agreed)
 
 # Table of tests
 
+Notice in @tbl-tests that all tests pass as required.
+
 ```{r}
+#| label: tbl-tests
+#| tbl-cap: "Table of all tests in package passing without failures"  
 #| echo: false
+
 res <- devtools::test(reporter = "silent")
 tab <- as.data.frame(res)[, c("file", "test", "nb", "failed", "skipped", "error")]
 knitr::kable(tab, col.names = c("File", "Test", "Checks", "Failed", "Skipped", "Error"))
@@ -36,11 +42,97 @@ knitr::kable(tab, col.names = c("File", "Test", "Checks", "Failed", "Skipped", "
 
 # Part B
 
-## B1 - How many nodes - ROLE A (5)
+## B1 - How many nodes
 
-![Integration errors at m=20](images/B1_m=20.png) ![Integration errors at m=2](images/B1_m=2.png) Gauss-Hermite (GH) and Adaptive Gauss-Hermite (AGH) generally improve as the number of integration nodes (K) increases. Laplace does not use integration nodes, but rather the mode and curvature so its error does not change for different values of K.
+```{r}
+#| label: fig-b1
+#| fig-cap: "Log integration error against number of nodes"
+#| fig-subcap:
+  #|   - "m = 20"
+  #|   - "m = 2"
+#| layout-ncol: 2
+#| echo: false
 
-Every additional observation (m) adds another log-likelihood contribution to hj(u). This generally makes the function more concentrated around its mode. This negatively impacted the accuracy of GH, which places its nodes according to the normal weighting function (centred at zero). Therefore, it performed better when m=2. Whereas, AGH adjusts the location and scale of its nodes to the integrand, using its mode and local curvature. This meant AGH performed the best in both cases. It converges faster when m=2 and significantly outdid the other 2 methods when m=20. Laplace performed poorly overall, as its Gaussian approximation does not capture the shape of the integrand well.
+#B1
+calculate_errors <- function(sim_data, theta, K) {
+  
+  # Use adaptive Gauss-Hermite with 50 nodes as the reference
+  agh_50 <- marginal_loglik(theta, sim_data, "agh", K = 50)
+  
+  # Calculate both errors for every value of K
+  integration_errors <- vapply(
+    K,
+    function(k) {
+      c(
+        gh_error = abs(marginal_loglik(theta, sim_data, "gh", k) - agh_50),
+        agh_error = abs(marginal_loglik(theta, sim_data, "agh", k) - agh_50)
+      )
+    },
+    numeric(2)
+  )
+  
+  # Calculate Laplace error once, since it does not depend on K
+  laplace_error <- abs(
+    marginal_loglik(theta, sim_data, "laplace") - agh_50
+  )
+  
+  # Combine everything into a data frame
+  data.frame(
+    K = K,
+    gh_error = integration_errors["gh_error", ],
+    agh_error = integration_errors["agh_error", ],
+    laplace_error = rep(laplace_error, length(K))
+  )
+}
+
+plot_errors <- function(errors, m) {
+  
+  ggplot(errors, aes(x = K)) +
+    geom_path(aes(y = gh_error, colour = "Gauss-Hermite")) +
+    geom_path(aes(y = agh_error, colour = "Adaptive Gauss-Hermite")) +
+    geom_path(aes(y = laplace_error, colour = "Laplace")) +
+    scale_colour_manual(
+      values = c(
+        "Gauss-Hermite" = "green",
+        "Adaptive Gauss-Hermite" = "red",
+        "Laplace" = "blue"
+      )
+    ) +
+    scale_y_log10() +
+    labs(
+      x = "Number of integration nodes (K)",
+      y = "Absolute error",
+      colour = "Method",
+      title = paste("Integration errors (m =", m, ")")
+    ) 
+}
+
+# Simulation settings
+set.seed(4113)
+beta <- c(1, 0.2)
+theta <- c(beta, log(1.5))
+K <- 1:30
+
+# Generate datasets
+sim_data_20 <- rint_sim(50, 20, beta, log(1.5))
+sim_data_2 <- rint_sim(50, 2, beta, log(1.5))
+
+# Calculate errors
+errors_20 <- calculate_errors(sim_data_20, theta, K)
+errors_2 <- calculate_errors(sim_data_2, theta, K)
+
+# Generate plots
+p20 <- plot_errors(errors_20, 20)
+p2 <- plot_errors(errors_2, 2)
+
+# Display both plots
+print(p20)
+print(p2)
+```
+
+In @fig-b1-1 `Gauss-Hermite (GH)` and `Adaptive Gauss-Hermite (AGH)` generally improve as the number of integration nodes `K` increases. `Laplace` does not use integration nodes, but rather the mode and curvature so its error does not change for different values of `K`.
+
+Every additional observation `m` adds another log-likelihood contribution to `hj(u)`. This generally makes the function more concentrated around its mode. This negatively impacts the accuracy of `GH`, which places its nodes according to the normal weighting function (centered at zero). Therefore, it performs better when `m=2` in @fig-b1-2. Whereas, `AGH` adjusts the location and scale of its nodes to the integrand, using its mode and local curvature. Therefore `AGH` performed the best in both cases. It converges faster when `m=2` and significantly outdid the other 2 methods when `m=20`. `Laplace` performed poorly overall, as its Gaussian approximation does not capture the shape of the integrand well.
 
 ## B2 - Importance Sampling - Roles below (5)
 
