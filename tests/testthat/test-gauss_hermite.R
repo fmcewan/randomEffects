@@ -1,28 +1,28 @@
 #Tests for gauss-hermite function
 
-test_that("gh produces correctly formatted output",{
+test_that("gauss_hermite() produces correctly formatted output",{
   expect_equal(5, length(gauss_hermite(5)$nodes))
   expect_equal(5, length(gauss_hermite(5)$weights))
 })
 
-test_that("gh produces appropriate error message for invalid input",{
+test_that("gauss_hermite() produces appropriate error message for invalid input",{
   expect_error(gauss_hermite(0), regexp = "n must be a valid positive integer")
   expect_error(gauss_hermite(c(1,2)), regexp = "n must be a valid positive integer")
   expect_error(gauss_hermite(Inf), regexp = "n must be a valid positive integer")
   expect_error(gauss_hermite("5"), regexp = "n must be a valid positive integer")
 })
 
-test_that("nodes are symmetric around 0",{
+test_that("gauss_hermite() nodes are symmetric around 0",{
   gh<-gauss_hermite(3)
   expect_true(all.equal(gh$nodes, -rev(gh$nodes)))
 })
 
 
-test_that("all weights are positive",{
+test_that("all gauss_hermite() weights are positive",{
   expect_true(all(gauss_hermite(4)$weights > 0))
 })
 
-test_that("Gauss-Hermite integrates polynomials up to degree 2n-1", {
+test_that("gauss-Hermite() integrates polynomials up to degree 2n-1", {
   #arbitrary list of various values of n
   for (n in c(1, 2, 3, 5, 10)) {
     
@@ -107,4 +107,32 @@ test_that("gh agrees with integrate for every cluster",{
       tolerance = 1e-8
     )
   }
+})
+
+test_that("gh handles clusters with all 0 responses", {
+  cd_0 <- list(
+    y = c(0,0,0,0,0,0),
+    X = matrix(c(1,1,1,1,1,1,0.1, 0.36, -0.2, 0, -0.23, -0.05), nrow = 6),
+    group = c(1,1,2,2,3,3),
+    J = 3,
+    cluster_size = c(2,2,2)
+  )
+  expect_true(all(is.finite(gh(example_theta, cd_0, 4))))
+})
+
+test_that("gh handles clusters with all 1 responses",{
+  cd_1 <- list(
+    y = c(1,1,1,1,1,1),
+    X = matrix(c(1,1,1,1,1,1,0.1, 0.36, -0.2, 0, -0.23, -0.05), nrow = 6),
+    group = c(1,1,2,2,3,3),
+    J = 3,
+    cluster_size = c(2,2,2)
+    )
+  expect_true(all(is.finite(gh(example_theta, cd_1, 4))))
+})
+
+test_that("gh handles large values of sigma",{
+  large_theta <- c(0, -0.5, 100)
+  result <- gh(large_theta, example_cd, 4)
+  expect_true(!any(is.nan(result)) || any(result == -Inf))
 })

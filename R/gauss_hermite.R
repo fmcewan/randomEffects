@@ -55,7 +55,7 @@ gauss_hermite <- function(n) {
 #' cluster_size = c(2,2,2)
 #')
 #'example_K <- 4
-#'gh(example_theta, example_data, example_K)
+#'gh(example_theta, example_cd, example_K)
 #'
 #'
 #'@export
@@ -103,6 +103,7 @@ gh <- function(theta, cd, K){
   
   #Sum log probabilities within each cluster (ie across all rows of the same cluster)
   #Repeats the calculation for each quadrature node
+  #Working on the log scale has saved the issue of taking log(0) when all responses are either 1 or 0
   cluster_loglikelihood <- rowsum(log_prob, cluster)
   
   #Take the logs of both weights and sqrt(pi) so operations can be performed on the log-scale
@@ -111,6 +112,7 @@ gh <- function(theta, cd, K){
   
   log_likelihoods <- row_logsumexp(
     #adds the log weights to the log-likelihoods
+    #log-sum-exp saves the quadrature integration from underflowing
     cluster_loglikelihood + matrix(
       log_weights, 
       nrow = n_clusters,
