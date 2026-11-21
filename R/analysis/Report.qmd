@@ -422,6 +422,8 @@ Which method would you recommend, for which cluster sizes and amounts of between
 
 # Part D (10 marks)
 
+From above we recommend the use of the function #TODO
+
 ## D1 - Analysis
 
 ```{r}
@@ -511,6 +513,30 @@ knitr::kable(
 
 ```
 
-## D2 - Do the practices matter? - Role E(5 marks)
+See above in @tbl-d1, the estimates with 95% CI's. All agree except for `gh` on $\beta_0$ - which is likely the loss of accuracy mentioned in B1. On $\beta_1$ their CI's all agree and estimates differ only by 0.01 at most. Since age is on the log scale we exponentiate and find that a unit increase in age, multiples a patients odds of attending by $\approx 2.4 (1.77,3.25)$. For a patient of average age, the probability of attending a practice one SD above and below is shown in @tbl-SD-interp.
+
+```{r}
+#| label: tbl-SD-interp
+#| tbl-cap: "Predicted attendance probability for a patient of average age at a practice one standard deviation above and below average"
+#| echo: false
+
+age_bar <- mean(gp$age)   # 0 if age is centred
+
+probs <- do.call(rbind, lapply(names(fits), function(m) {
+  b0 <- fits[[m]]$par[1]
+  b1 <- fits[[m]]$par[2]
+  s  <- exp(fits[[m]]$par[3])
+  p  <- plogis(b0 + b1 * age_bar + c(-1, 1) * s)
+  data.frame(Method = m, p_below = p[1], p_above = p[2])
+}))
+
+probs <- probs[match(c("agh", "laplace", "gh", "is"), probs$Method), ]
+probs$Method <- c("AGH (K=7)", "Laplace", "GH (K=10)", "IS (R=100)")
+knitr::kable(probs, row.names = FALSE, digits = 2,
+             col.names = c("Method", "1 SD below", "1 SD above"))
+
+```
+
+D2 - Do the practices matter? - Role E(5 marks)
 
 Compare the random-intercept model with a pooled logistic regression, `glm(attended ~ age, family = binomial)`, by 5-fold cross-validation in which each fold holds out **whole practices** (Lecture 11). Score each model by the log-likelihood of the held-out practices’ responses: for the random-intercept model, that is ∑jlogLj over the held-out practices, at the parameters fitted to the other folds. Report both cross-validated scores with their standard errors across folds. Explain why holding out random patients instead would be wrong here \[at most 100 words\].
