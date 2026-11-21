@@ -68,7 +68,7 @@ sim_data_2 <- rint_sim(50, 2, beta, log(1.5))
 
 ```{r}
 #| label: fig-b1
-#| fig-cap: "Log integration error against number of nodes"
+#| fig-cap: "Log integration error against number of nodes showing ranking agh>gh>laplace"
 #| fig-subcap:
   #|   - "m = 20"
   #|   - "m = 2"
@@ -148,24 +148,171 @@ Every additional observation `m` adds another log-likelihood contribution to `hj
 
 ## B2 - Importance Sampling - Roles below (5)
 
-(C) 
+```{r}
+#| label: b2-run
+#| include: false
+#| cache: true
 
-- For the m=20 data set, estimate ℓ by importance sampling with R = 10, 30, 100, 300 and 1000 draws, repeating each 200 times with fresh draws.
+set.seed(4113)
+beta_true <- c(-0.5, 1)
+sigma_true <- 1.5
+theta0 <- c(beta_true, log(sigma_true))
 
-- **Plot** the bias and standard deviation of the estimates against R, and compare the standard deviation with your package’s own Monte Carlo SE.
+sim  <- rint_sim(50, 20, beta_true, log(sigma_true))
+cd20 <- cluster_data(sim$y, sim$X, factor(sim$group))
 
-- Explain why the estimate of ℓ=∑jlogLj is biased even though each estimate of Lj is unbiased, and how the bias depends on R **\[at most 100 words\].**
+truth <- marginal_loglik(theta0, cd20, method = "agh", K = 50)
 
-(D) 
+Rs <- c(10, 30, 100, 300, 1000)
+n_rep <- 200
 
-- Then show what goes wrong if `fit_rint()` draws fresh importance-sampling draws at every evaluation of ℓ.
+one_run <- function(R) {
+  est <- importance_sampling(theta0, cd20, is_draws(cd20, R = R))
+  c(ell = sum(est), mc_se = sqrt(sum(attr(est, "mc_se")^2)))
+}
+
+results <- do.call(rbind, lapply(Rs, function(R) {
+  reps <- t(replicate(n_rep, one_run(R)))
+  data.frame(
+    R = R,
+    bias = mean(reps[, "ell"]) - truth,
+    bias_mcse = sd(reps[, "ell"]) / sqrt(n_rep),
+    sd = sd(reps[, "ell"]),
+    mean_mc_se = mean(reps[, "mc_se"]),
+    predicted = -0.5 * mean(reps[, "mc_se"]^2)
+  )
+}))
+
+spread <- data.frame(
+  R = rep(results$R, 2),
+  value = c(results$sd, results$mean_mc_se),
+  measure = rep(c("SD across 200 repetitions", "Mean reported MC SE"),
+                each = nrow(results))
+)
+
+sigma_grid <- seq(1, 2, length.out = 60)
+Z_fixed <- is_draws(cd20, R = 100)
+profile_df <- data.frame(
+  sigma = rep(sigma_grid, 2),
+  ell = c(
+    sapply(sigma_grid, function(s)
+      sum(importance_sampling(c(beta_true, log(s)), cd20, Z_fixed))),
+    sapply(sigma_grid, function(s)
+      sum(importance_sampling(c(beta_true, log(s)), cd20, is_draws(cd20, R = 100))))
+  ),
+  draws = rep(c("Same draws", "Fresh draws each evaluation"),
+              each = length(sigma_grid))
+)
+
+```
+
+```{r}
+#| label: fig-b2
+#| fig-cap: "Importance sampling estimate of the log-likelihood (m = 20, 200 repetitions per R)"
+#| fig-subcap:
+  #|   - "Bias, with ±2 Monte Carlo SE bars; dashed line is the Jensen prediction −SE²/2"
+  #|   - "SD across repetitions vs the package's mean reported MC SE"
+#| layout-ncol: 2
+#| echo: false
+
+ggplot(results, aes(R, bias)) +
+  geom_hline(yintercept = 0, colour = "grey60") +
+  geom_pointrange(aes(ymin = bias - 2 * bias_mcse, ymax = bias + 2 * bias_mcse)) +
+  geom_line(aes(y = predicted), linetype = "dashed", colour = "steelblue") +
+  scale_x_log10(breaks = Rs) +
+  labs(x = "Draws per cluster, R (log scale)", y = "Bias of IS log-likelihood") +
+  theme_bw()
+
+ggplot(spread, aes(R, value, colour = measure)) +
+  geom_point() + geom_line() +
+  scale_x_log10(breaks = Rs) + scale_y_log10() +
+  labs(x = "Draws per cluster, R (log scale)", y = "SD (log scale)", colour = NULL) +
+  theme_bw() + theme(legend.position = "bottom")
+
+
+```
+
+```{r}
+#| label: fig-b2-crn
+#| fig-cap: "IS log-likelihood (R = 100) as σ varies with β fixed at the truth: reusing the same draws gives a smooth curve, fresh draws at each evaluation give a jagged one"
+#| echo: false
+#| fig-width: 6
+#| fig-height: 3.5
+
+ggplot(profile_df, aes(sigma, ell, colour = draws)) +
+  geom_line() +
+  labs(x = expression(sigma), y = "IS log-likelihood", colour = NULL) +
+  theme_bw() + theme(legend.position = "bottom")
+```
+
+(D) Explain why the estimate of ℓ=∑jlogLj is biased even though each estimate of Lj is unbiased, and how the bias depends on R **\[at most 100 words\].**
+
+```{r}
+#| label: b2-fits-run
+#| include: false
+#| cache: true
+#| dependson: b2-run
+
+set.seed(2027)
+
+# Starting values as in fit_rint(): pooled logistic regression, log sigma = 0
+start <- c(unname(coef(glm(cd20$y ~ cd20$X - 1, family = binomial))), 0)
+
+# Incorrect: new draws every time the optimiser evaluates the likelihood
+nll_fresh <- function(theta) {
+  -sum(importance_sampling(theta, cd20, is_draws(cd20, R = 100)))
+}
+
+# AI assisted: returns a data frame per fit and records conditionMessage(e)
+# so the reason each fresh-draws fit failed is kept
+fresh_fits <- do.call(rbind, lapply(1:5, function(k) {
+  tryCatch({
+    o <- optim(start, nll_fresh, method = "BFGS")
+    se <- tryCatch(sqrt(diag(solve(numDeriv::hessian(nll_fresh, o$par)))),
+                   error = function(e) rep(NA, 3))
+    data.frame(fit = paste("Fresh", k), beta0 = o$par[1], beta1 = o$par[2],
+               sigma = exp(o$par[3]), convergence = o$convergence,
+               evals = unname(o$counts["function"]),
+               se_beta1 = se[2], se_logsigma = se[3], error = NA)
+  }, error = function(e) {
+    data.frame(fit = paste("Fresh", k), beta0 = NA, beta1 = NA, sigma = NA,
+               convergence = NA, evals = NA, se_beta1 = NA, se_logsigma = NA,
+               error = conditionMessage(e))
+  })
+}))
+
+fixed_fit <- fit_rint(cd20, method = "is", draws = is_draws(cd20, R = 100))
+
+fixed_row <- data.frame(fit = "Fixed draws", beta0 = fixed_fit$par[1],
+                        beta1 = fixed_fit$par[2], sigma = exp(fixed_fit$par[3]),
+                        convergence = fixed_fit$convergence, evals = NA,
+                        se_beta1 = fixed_fit$se[2], se_logsigma = fixed_fit$se[3],
+                        error = NA)
+
+b2_fits <- rbind(fresh_fits, fixed_row)
+```
+
+```{r}
+#| label: tbl-b2-fits
+#| tbl-cap: "Five IS fits (R = 100) drawing fresh draws at every likelihood evaluation, compared with one fit using fixed draws. True values: $\\beta_0 = -0.5$, $\\beta_1 = 1$, $\\sigma = 1.5$. Convergence code 0 = converged."
+#| echo: false
+
+tab <- b2_fits
+if (all(is.na(tab$error))) tab$error <- NULL   # drop error column if nothing failed
+
+knitr::kable(
+  tab, row.names = FALSE, digits = 3,
+  col.names = c("Fit", "$\\beta_0$", "$\\beta_1$", "$\\sigma$", "Conv.",
+                "Evals", "SE($\\beta_1$)", "SE($\\log\\sigma$)",
+                if (!is.null(tab$error)) "Error"),
+  escape = FALSE
+)
+```
 
 ## B3 - Cost
 
 ```{r}
 #|echo: false
-# B3: Functions and settings for computational cost comparisons
-
 # Default settings (to be able to pass this as one variable later)
 b3_settings <- list(
   cluster_counts = c(50, 200, 800),
@@ -537,8 +684,91 @@ knitr::kable(probs, row.names = FALSE, digits = 2,
 
 ```
 
-D2 - Do the practices matter? - Role E(5 marks)
+## D2 - Do the practices matter?
+
+Notice in @tbl-D2-CV that our random intercept model beats the pooled regression model `glm`, with a CV of ####, SE#### on a 5 fold cross-validation test folding out random practices. It would be incorrect to fold out random patients instead of practices as patients are correlated through a shared practice effect - folding out random patients would lead to information leakage through their practice mates left behind. Making the CV scores over-optimistic particularly for the random-intercept model. Further we would lose independence in our held-out folds making our SE values wrong, and since our score $\sum log L_j$ is defined on practices, it needs patient practices together.
 
 ```{r}
+#| label: tbl-D2-CV
+#| tbl-cap: "Cross validation score along with mcse of our recommended method versus R's glm function - showing our method perform better"
+#| echo: false
+# Part D2
+rec = "agh"
 
+fitter<- function(train, test,method="glm",K=NULL,draws=NULL) { 
+  
+  #baseline GLM model
+  
+  if (method=="glm"){
+    fit <- glm(attended ~ age, family = binomial, data = train) #fit model
+    p <- predict(fit, test, type = "response") #predict model on test dataset
+    return (sum(dbinom(test$attended, 1, p, log = TRUE))) #let log-lik be the error measure
+  }
+  
+  
+  #check is one of required fns
+  if (!method %in% (c("agh","gh","is","laplace"))){
+    stop("method must be one of 'agh', 'gh', 'is', 'laplace'")
+  }
+  
+  # method-specific defaults if not supplied
+  if (is.null(K)) {
+    K <- switch(method,
+                agh = 7,    # adaptive: few nodes needed
+                gh  = 10,    # non-adaptive: needs more nodes
+                NULL)        # laplace / is don't use K
+  }
+  if (method == "is" && is.null(draws)) draws <- 100
+  
+  
+  #change data
+  cd_train <- cluster_data(train$attended, model.matrix(~ age, data = train), train$practice)
+  cd_test <- cluster_data(test$attended, model.matrix(~ age, data = test), test$practice)
+  
+  
+  # IS needs its own draws matrix for each dataset (one row per practice)
+  draws_train <- draws_test <- NULL
+  if (method == "is") {
+    draws_train <- is_draws(cd_train, R = draws)
+    draws_test  <- is_draws(cd_test,  R = draws)
+  }
+  
+  #and fit on training data
+  fit_train <- fit_rint(cd_train,method,K,draws_train)
+  
+  # 2. score held-out practices at those estimates (no refitting)
+  return (marginal_loglik(fit_train$par, cd_test, method, K = K, draws = draws_test))
+}
+
+#adapted from lecture 12
+cross_validation <- function(data,fitter,...,folds=5) {
+  
+  
+  stopifnot(is.numeric(folds), folds >= 2)
+  
+  practices <- unique(data$practice)
+  fold_of <- sample(rep(1:folds, length.out = length(practices)))   # fold per practice
+  names(fold_of) <- practices
+  data$fold <- fold_of[as.character(data$practice)]             # each patient gets their practice's fold
+  
+  fold_score <- numeric(folds)
+  
+  for (k in 1:folds) {
+    train <- data[data$fold != k, ]
+    test  <- data[data$fold == k, ]
+    fold_score[k] <- fitter(train, test,...)       # fitter fits on train, returns held-out log-lik on test
+  }
+  c(cv=mean(fold_score), se = stats::sd(fold_score) / sqrt(folds))
+}
+
+set.seed(2026); s_glm <- cross_validation(data = gp, fitter = fitter)
+set.seed(2026); s_rec <- cross_validation(data = gp, fitter = fitter, method = rec)
+
+d2_tab <- data.frame(
+  Model = c("Random intercept", "Pooled logistic (glm)"),
+  rbind(s_rec, s_glm),
+  row.names = NULL
+)
+
+knitr::kable(d2_tab, digits = 2, col.names = c("Model", "CV score", "SE"))
 ```
