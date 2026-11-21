@@ -75,24 +75,30 @@ simulate_replicate <- function(replicate, scenario, J, beta, seed) {
   cbind(rep = replicate, m=scenario$m, sigma=scenario$sigma, results)
 }
 
-run_study <- function(number_of_replicates, J = 50, beta = c(-0.5, 1), seed = 2026) {
-  
-  # Create scenarios
+run_task <- function(i, tasks, scenarios, specifications, J, beta, seed) {
+  simulate_replicate(tasks$rep[i], scenarios[tasks$scenario[i], ], J, beta, seed, specifications)
+}
+
+run_study <- function(number_of_replicates, J = 50, beta = c(-0.5, 1), seed = 2026,
+                      cores = max(1, parallel::detectCores() - 1)) {
+
   scenarios <- expand.grid(m = c(2, 5, 20), sigma = c(0.5, 1.5))
   scenarios$id <- seq_len(nrow(scenarios))
-  
-  # Create results vector
-  results <- vector("list", nrow(scenarios) * number_of_replicates)
-  k <- 0 
-  
-  # Simulate replicates for all results
-  for (s in seq_len(nrow(scenarios))) {
-    for (r in seq_len(number_of_replicates)) {
-      k <- k + 1
-      results[[k]] <- simulate_replicate(r, scenarios[s, ], J, beta, seed)
-    }
-  }
+
+  tasks <- expand.grid(scenario = seq_len(nrow(scenarios)),
+                       rep = seq_len(number_of_replicates))
+  tasks <- tasks[order(tasks$scenario, tasks$rep), ]
+
+  cluster <- parallel::makeCluster(cores)
+  on.exit(parallel::stopCluster(cluster))
+  parallel::clusterEvalQ(cluster, library(randomEffects))
+  parallel::clusterExport(cluster, c("fit_method", "simulate_replicate", "run_task"))
+
+  results <- parallel::parLapplyLB(
+    cluster, seq_len(nrow(tasks)), run_task,
+    tasks = tasks, scenarios = scenarios, specifications = specifications,
+    J = J, beta = beta, seed = seed
+  )
 
   do.call(rbind, results)
-
 }
