@@ -76,100 +76,126 @@ Estimands:$\beta_0$,  $\beta_1$ and $\sigma$.
 - Use J=50 clusters, β=(−0.5,1), cluster sizes m = 2, 5 and 20, and σ = 0.5 and 1.5. Your estimands must include β1 and σ, and your performance measures must include bias, empirical standard error, and the coverage of nominal 95% Wald intervals (for σ, built on the logσ scale and back-transformed). Record how often each fit fails to converge, and say how you will handle such fits.
 
 ```{r}
-#| include: false
-library(randomEffects)
-study <- readRDS(here("results", "study.rds"))
-
-pilot <- summarise_study(study[study$rep <= 50, ])
-first500 <- summarise_study(study[study$rep <= 500, ])
-final <- summarise_study(study)
-
-max_se <- tapply(pilot$emp_se, pilot$param, max)
-p_worst <- min(first500$coverage)
-n_cov <- ceiling(0.95 * 0.05 / 0.01^2)
-n_cov_worst <- ceiling(p_worst * (1 - p_worst) / 0.01^2)
-n_bias_beta <- ceiling((unname(max_se["beta1"]) / 0.05)^2)
-n_bias_sigma <- ceiling((unname(max_se["sigma"]) / 0.1)^2)
 ```
-
 ## C2 - Number of replicates - Role D (4)
 
-The Monte Carlo standard error (MCSE) of an estimated coverage $p$ is $\sqrt{p(1-p)/n}$. For it to at most 0.01 with $p=0.95$, we need to have $n \ge 0.95 \times 0.05/(0.01)^2 = 475$. The MCSE of a bias is $SD/\sqrt(n)$, so to detect a difference of $\delta$, so we need $n \ge (SD/\delta)^2$.
+The Monte Carlo standard error (MCSE) of an estimated coverage $p$ is $\sqrt{p(1-p)/n}$. For it to be at most 0.01 with $p=0.95$, we need to have $n \ge 0.95 \times 0.05/(0.01)^2 = 475$. The MCSE of a bias is $SD/\sqrt{n}$, so to detect a difference of $\delta$ we need $n \ge (SD/\delta)^2$.
 
-In a pilot of 50 replicates, the largest empircal standard errors (SEs) were 0.35 for $\beta_1$ and 1.05 for $\sigma$, where $m=2$ and $\sigma=1.5$). Therefore, detecting a difference of 0.05 in $beta_1$ and 1.04 for $sigma$ requires $n \ge 49$ and $n \ge 110$.
+In a pilot of 50 replicates, the largest empirical standard errors (SEs) were 0.35 for $\beta_1$ and 1.045 for $\sigma$ (where $m=2$ and $\sigma=1.5$). Therefore, detecting a difference of 0.05 in $\beta_1$ and 0.1 in $\sigma$ requires $n \ge 49$ and $n \ge 110$.
 
-Coverage was therfore the more demanding requirement, so we based the number of replicates for the study on it. We first ran 500 replicates; however, in that run, some cells well below the required 0.95 coverage. The lowest cell was 0.886 for $\sigma$ at $m=2$ and $\sigma = 0.05$ with MCSE 0.014, and so using this worst case we could work out $n \ge 0.886x0.0114/0.01^2 \approx 1010$. We therefore ran 1100 replicates in the final run, and the target coverage was met. 
+Coverage was therefore the more demanding requirement, so we based the number of replicates for the study on it. We first ran 500 replicates; however, in that run, some cells had coverage well below the nominal 0.95. The lowest cell was 0.886 for $\sigma$ at $m=2$ and $\sigma = 0.5$ with MCSE 0.014, and so using this worst case we could work out $n \ge 0.886 \times 0.114/0.01^2 \approx 1010$. We therefore ran 1100 replicates in the final run, and the target coverage was met with the largest coverage MCSE being 0.0098. 
 
 ## C3 - Results - Role D (8)
 
 ```{r}
 #| include: false
-perf_table <- function(s, param) {
-  s$bias_txt <- sprintf("%.3f (%.3f)", s$bias, s$bias_mcse)
-  s$se_txt   <- sprintf("%.3f (%.3f)", s$emp_se, s$emp_se_mcse)
-  s$cov_txt  <- sprintf("%.3f (%.3f)", s$coverage, s$coverage_mcse)
-  tab <- s[s$param == param, c("m", "sigma", "method", "bias_txt", "se_txt", "cov_txt")]
-  tab[order(tab$sigma, tab$m, tab$method), ]
-}
+library(randomEffects)
+study <- readRDS(here("results", "study.rds"))
+final <- summarise_study(study)
+```
 
-coverage_plot <- function(s, param) {
+```{r}
+#| include: false
+coverage_plot <- function(results, param) {
   methods <- c("laplace", "gh", "agh", "is")
+
+  results <- results[results$param == param, ]
+  results$low  <- results$coverage - 1.96 * results$coverage_mcse
+  results$high <- results$coverage + 1.96 * results$coverage_mcse
+  ylim <- range(results$low, results$high, 0.95)
+
   par(mfrow = c(2, 3), mar = c(4, 4, 3, 1))
-  for (sg in c(0.5, 1.5)) {
-    for (mm in c(2, 5, 20)) {
-      d <- s[s$param == param & s$sigma == sg & s$m == mm, ]
-      d <- d[match(methods, d$method), ]
-      lo <- d$coverage - 1.96 * d$coverage_mcse
-      hi <- d$coverage + 1.96 * d$coverage_mcse
-      plot(1:4, d$coverage, ylim = c(0.84, 1), xaxt = "n", xlab = "", ylab = "Coverage",
-           main = paste0("m = ", mm, ", sigma = ", sg), pch = 19)
-      axis(1, at = 1:4, labels = methods)
-      segments(1:4, lo, 1:4, hi)
+  for (sigma_true in c(0.5, 1.5)) {
+    for (cluster_size in c(2, 5, 20)) {
+
+      panel_data <- results[results$m == cluster_size & results$sigma == sigma_true, ]
+      panel_data <- panel_data[match(methods, panel_data$method), ]
+
+      plot(1:4, panel_data$coverage, ylim = ylim, xlim = c(0.5, 4.5), xaxt = "n", xlab = "Method", ylab = "Coverage", 
+        pch = 19, main = paste0("m = ", cluster_size, ", sigma = ", sigma_true))
+      axis(1, at = 1:4, labels = methods, cex.axis = 0.8)
+      segments(1:4, panel_data$low, 1:4, panel_data$high)
       abline(h = 0.95, lty = 2)
     }
   }
+
 }
-
-tab_cols <- c("m", "σ", "Method", "Bias (MCSE)", "Empirical SE (MCSE)", "Coverage (MCSE)")
 ```
 
 ```{r}
 #| echo: false
-#| tbl-cap: "Performance for $\\beta_1$. Monte Carlo SE in brackets."
-knitr::kable(perf_table(final, "beta1"), row.names = FALSE, col.names = tab_cols)
-```
-
-```{r}
-#| echo: false
-#| tbl-cap: "Performance for $\\sigma$. Monte Carlo SE in brackets."
-knitr::kable(perf_table(final, "sigma"), row.names = FALSE, col.names = tab_cols)
-```
-
-```{r}
-#| echo: false
-#| fig-height: 6
-#| fig-cap: "Coverage of nominal 95% Wald intervals for $\\beta_1$, with $\\pm 1.96$ Monte Carlo SE. Dashed line at 0.95."
+#| label: fig-beta-coverage 
+#| fig-cap: "Empirical coverage of the 95% Wald interval for $\\beta_1$ by method."
+#| fig-width: 9
+#| fig-height: 5
 coverage_plot(final, "beta1")
 ```
 
 ```{r}
 #| echo: false
-#| fig-height: 6
-#| fig-cap: "Coverage of nominal 95% Wald intervals for $\\sigma$, with $\\pm 1.96$ Monte Carlo SE. Dashed line at 0.95."
+#| label: fig-sigma-coverage
+#| fig-cap: "Empirical coverage of the 95% Wald interval for $\\sigma$ by method."
+#| fig-width: 9
+#| fig-height: 5
 coverage_plot(final, "sigma")
 ```
 
+We ran 1100 replicates per scenario. All fits converged except two Laplace fits ($m=2$ and $\sigma=1.5$, as well as $m=5$ and $\sigma=0.5$), which are excluded from those cells. @tbl-beta and @tbl-sigma give bias, empirical standard error and coverage for $\beta_1$ and $\sigma$, @fig-beta-coverage and @fig-sigma-coverage show coverage, and @tbl-time provides time per fit.
+
+For $\beta_1$, coverage sits close to 0.95 for all four methods in most scenarios, ranging from 0.934 to 0.968 (@tbl-beta). There are two exceptions: all methods exhibit over-coverage at $m=2$ and $\sigma=0.5$ (0.966 to 0.968), and Laplace under-covers at $m=2$ and $\sigma=1.5$ (0.934). The bias in $\hat\beta_1$ is small and positive, and it is biggest at $m=2$ (0.09 to 0.12) and has almost vanished by $m=20$ (less than 0.005). From $m=5$ upwards, the four methods are essentially the same in terms of bias and empirical standard error. The differences show at $m=2$, where the empirical standard error at $\sigma=1.5$ is 1.39 for Laplace but only 0.44 to 0.59 for the other three.
+
+The picture for $\sigma$ is less even (@tbl-sigma, @fig-sigma-coverage). At $m=2$ and $\sigma=0.5$, GH, AGH and IS all exhibit under-coverage at 0.879 to 0.881, which is well short of the 0.95 with a given Monte Carlo standard error of about 0.01. Laplace manages 0.948. GH on its own also presents with under-coverage at $m=20$ and $\sigma=1.5$ (0.918), where all other methods are at 0.945. At $m=20$ and $\sigma=0.5$, every method exhibits overcoverage (0.973 and 0.975) and $\hat\sigma$ has a negative bias of about $-0.024$. Laplace at $m=2$ and $\sigma=1.5$ has coverage of 0.985 but its empirical standard error is 3.57, so the coverage comes from very wide intervals. 
+
+GH and Laplace were the fastest methods at $m=2$ and $m=5$ (0.43 to 0.58s per fit), with AGH about twice as slow and IS being the slowest, taking 0.99s at $m=2$ and 1.49s at $m=5$ (@tbl-time). By $m=20$, the gap between Laplace, GH and AGH had mostly closed (0.97, 1.01 and 1.06s), while IS was still more than twice as slow as the others at 2.52s. 
+
+Run time grew with $m$ for GH, IS and Laplace; AGH, however, did not rise consistently with $m$ (0.92, 0.80, 1.06s). The study ran parallel on 15 workers, so the times included some slowdown from competing workers.
+
 ```{r}
-#| echo: false
-#| tbl-cap: "Mean time per fit in seconds (Monte Carlo SE in brackets)."
-tb <- study[study$param == "beta1", ]
-t_mean <- tapply(tb$time, list(tb$method, tb$m), mean)
-t_se <- tapply(tb$time, list(tb$method, tb$m), sd) / sqrt(tapply(tb$time, list(tb$method, tb$m), length))
-t_txt <- matrix(sprintf("%.2f (%.2f)", t_mean, t_se), nrow = nrow(t_mean), dimnames = dimnames(t_mean))
-knitr::kable(t_txt[c("laplace", "gh", "agh", "is"), ], col.names = paste0("m = ", colnames(t_txt)))
+#| include: false
+tab_columns <- c("method", "bias", "bias_mcse", "emp_se", "coverage", "coverage_mcse")
+
+performance_table <- function(results, param) {
+
+  methods <- c("laplace", "gh", "agh", "is")
+  
+  results <- results[results$param == param, ]
+  results$method <- factor(results$method, levels = methods)
+  results <- results[order(results$sigma, results$m, results$method), ]
+  results[, c("m", "sigma", tab_columns)]
+
+}
 ```
 
-Run the study and present the results in tables and figures, with every performance measure given with its Monte Carlo standard error. Report the time each method took.
+```{r}
+#| label: tbl-beta
+#| echo: false
+#| tbl-cap: "Performance for $\\beta_1$ by scenario and method."
+knitr::kable(performance_table(final, "beta1"), digits = 3, row.names = FALSE)
+```
+
+```{r}
+#| label: tbl-sigma
+#| echo: false
+#| tbl-cap: "Performance for $\\sigma$ by scenario and method."
+knitr::kable(performance_table(final, "sigma"), digits = 3, row.names = FALSE)
+```
+
+```{r}
+#| label: tbl-time
+#| echo: false
+#| tbl-cap: "Mean time per fit in seconds by method and cluster size."
+
+standard_error <- function(x) {
+  sd(x) / sqrt(length(x))
+}
+
+fits <- study[study$param == "beta1", ]   
+mean_time <- tapply(fits$time, list(fits$method, fits$m), mean)
+standard_error_time <- tapply(fits$time, list(fits$method, fits$m), standard_error)
+time_txt <- matrix(sprintf("%.3f (%.3f)", mean_time, standard_error_time), nrow = nrow(mean_time), dimnames = dimnames(mean_time))
+
+knitr::kable(time_txt[c("laplace", "gh", "agh", "is"), ])
+```
 
 ## C4 - Recommendations - Roles below (7)
 
