@@ -134,5 +134,5 @@ test_that("gh handles clusters with all 1 responses",{
 test_that("gh handles large values of sigma",{
   large_theta <- c(0, -0.5, 100)
   result <- gh(large_theta, example_cd, 4)
-  expect_true(!any(is.nan(result)) || any(result == -Inf))
+  expect_true(all(is.finite(result)))
 })

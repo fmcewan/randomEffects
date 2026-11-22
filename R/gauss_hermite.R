@@ -160,7 +160,7 @@ cluster_integral <- function(theta, cd, j){
       
       exp(log_lik) * dnorm(u, mean = 0, sd = sigma)
     },
-    lower = Inf,
+    lower = -Inf,
     upper = Inf
   )
   log(result$value)
