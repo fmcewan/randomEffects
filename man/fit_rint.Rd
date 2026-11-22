@@ -31,7 +31,7 @@ using BFGS. Standard errors are generated from a numerical Hessian calculated
 using numDeriv::hessian.
 }
 \examples{
-data <- rint_sim(J = 50, m = 5, beta = c(-0.5, 1), sigma = 1)
-cd <- cluster_data(data$y, data$X, data$group)
+data <- rint_sim(J = 50, m = 5, beta = c(-0.5, 1), sigma = log(1))
+cd <- cluster_data(data$y, data$X, factor(data$group))
 fit_rint(cd, method = "laplace")
 }

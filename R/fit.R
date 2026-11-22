@@ -25,8 +25,8 @@ negative_loglik <- function(theta, cd, lik_method,  K, draws) {
 #' @importFrom stats optim glm coef binomial
 #' @export 
 #' @examples
-#' data <- rint_sim(J = 50, m = 5, beta = c(-0.5, 1), sigma = 1)
-#' cd <- cluster_data(data$y, data$X, data$group)
+#' data <- rint_sim(J = 50, m = 5, beta = c(-0.5, 1), sigma = log(1))
+#' cd <- cluster_data(data$y, data$X, factor(data$group))
 #' fit_rint(cd, method = "laplace")
 fit_rint <- function(cd, method, K=NULL, draws=NULL, start=NULL) {
   
@@ -35,9 +35,17 @@ fit_rint <- function(cd, method, K=NULL, draws=NULL, start=NULL) {
     beta_start <- unname(coef(glm(cd$y ~ cd$X - 1, family = binomial)))
     start <- c(beta_start, 0)
   }
-
+  
+  #AI suggested fix
+  # objective for optim(): treat points where the likelihood cannot be evaluated as infinitely bad,
+  #so BFGS backtracks instead of stopping
+  safe_nll <- function(theta, ...) {
+    value <- tryCatch(negative_loglik(theta, ...), error = function(e) Inf)
+    if (is.finite(value)) value else Inf
+  }
+  
   # Define optimisers and Hessian
-  optimiser <- optim(start, negative_loglik, cd=cd, lik_method=method, K=K, draws=draws, method="BFGS")
+  optimiser <- optim(start, safe_nll, cd=cd, lik_method=method, K=K, draws=draws, method="BFGS")
   hessian <- numDeriv::hessian(negative_loglik, optimiser$par, cd=cd, lik_method=method, K=K, draws=draws)
 
   # Find standard errors
@@ -46,3 +54,4 @@ fit_rint <- function(cd, method, K=NULL, draws=NULL, start=NULL) {
   return (list(par=optimiser$par, se=standard_errors, loglik=-optimiser$value, convergence=optimiser$convergence))  
 
 }
+
