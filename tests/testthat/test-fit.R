@@ -55,3 +55,12 @@ test_that("fit_rint with laplace agrees with lme4::glmer", {
   expect_equal(exp(fit$par[3]), lme4::getME(ref, "theta")[[1]], tolerance = 1e-3)
   expect_equal(fit$loglik, as.numeric(logLik(ref)), tolerance = 1e-4)
 })
+
+test_that("fit_rint with fixed IS draws converges on m = 20 data", {
+  set.seed(4113)
+  sim <- rint_sim(50, 20, c(-0.5, 1), log(1.5))
+  cd <- cluster_data(sim$y, sim$X, factor(sim$group))
+  fit <- fit_rint(cd, method = "is", draws = is_draws(cd, R = 100))
+  expect_equal(fit$convergence, 0)
+  expect_true(all(is.finite(fit$par)))
+})
