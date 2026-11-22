@@ -4,11 +4,14 @@ format:
   pdf:
     code-overflow: wrap
     number-sections: true
+    fig-pos: "H"
+    tbl-pos: "H"
 execute:
   echo: false
 ---
 
 ```{r}
+#| include: false
 set.seed(4113)
 library(here)
 group <- 5
@@ -24,7 +27,9 @@ devtools::load_all(here::here())
 library(ggplot2)
 ```
 
-GenAI declaration, README and final render check - (D or E, to be agreed)
+# GenAI declaration
+
+We declare that parts of this submission incorporate contributions from GenAI software and that the use of GenAI aligns with acceptable use as outlined in University policy and in the module and assignment guidance and is consistent with good academic practice. The tools used were Claude AI, Chagpt, Copilot by separate members.
 
 # Part A {#sec-A}
 
@@ -46,7 +51,7 @@ In our package we have data functions:
 
 - `gh`: non-adaptive numerical integral based on Gauss-Hermite.
 
-- `laplace` approximates each practice’s integrand with a normal shape around its peak. `cluster_modes()` finds where that peak is and its curvature, which describes its width. Laplace then uses the peak’s height and width to approximate the integral.
+- `laplace` approximates each practice’s integrand with a normal shape around its peak. `cluster_modes()` finds where that peak is and its curvature, which describes its width. `laplace` then uses the peak’s height and width to approximate the integral.
 
   - Note `cluster_modes` uses Newton’s method which is suitable here because each cluster’s log-integrand has a strictly negative second derivative, so will give a unique mode. A zero gradient, therefore, identifies that mode rather than a minimum or saddle point. Backtracking safeguards the updates by shortening steps that do not sufficiently improve the objective. 
 
@@ -99,8 +104,8 @@ theta <- c(beta, log(sigma))
 #| echo: false
 #| fig-cap: "Log integration error against number of nodes showing ranking agh>gh>laplace"
 #| fig-subcap:
-  #|   - "m = 20"
-  #|   - "m = 2"
+#|   - "m = 20"
+#|   - "m = 2"
 #| layout-ncol: 2
 
 K <- 1:30 #let K vary from 1 to 30
@@ -175,13 +180,13 @@ print(p20)
 print(p2)
 ```
 
-In @fig-b1-1 `Gauss-Hermite (gh)` and `Adaptive Gauss-Hermite (agh)` error's generally decrease as the number of integration nodes $K$ increases. `Laplace` does not use integration nodes, but rather the mode and curvature so its error does not change for different values of $K$.
+In @fig-b1-1 `Gauss-Hermite (gh)` and `Adaptive Gauss-Hermite (agh)` error's generally decrease as the number of integration nodes $K$ increases. `laplace` does not use integration nodes, but rather the mode and curvature so its error does not change for different values of $K$.
 
-Every additional observation $m$ adds another log-likelihood contribution to $h_j(u)$. This generally makes the function more concentrated around its mode. This negatively impacts the accuracy of `gh`, which places its nodes according to the normal weighting function (centered at zero). Therefore, its errors decrease quicker when $m=2$ in @fig-b1-2 than in the $m=20$ case of @fig-b1-1. Whereas, `agh` is able to adjust the location and scale of its nodes to the integrand, using its mode and local curvature. `laplace` performed poorly overall, as its Gaussian approximation does not capture the shape of the integrand well.
-
-Meaning `agh` reached a lower absolute error and converged faster in both cases. The final absolute errors (`agh`, `gh`, `laplace`) for $m=2$ are (`r signif(tail(errors_2$agh_error, 1), 3)`, `r signif(tail(errors_2$gh_error, 1), 3)`, `r signif(tail(errors_2$laplace_error, 1), 3)`), and for $m=20$ they are (`r signif(tail(errors_20$agh_error, 1), 3)`, `r signif(tail(errors_20$gh_error, 1), 3)`, `r signif(tail(errors_20$laplace_error, 1), 3)`).
+Every additional observation $m$ adds another log-likelihood contribution to $h_j(u)$ concentrating the function around its mode. This negatively impacts the accuracy of `gh`, which places its nodes according to the normal weighting function (centered at zero). Its errors are lower for $m=2$ in @fig-b1-2 than in the $m=20$ case @fig-b1-1. `agh` , by contrast, is able to adjust the location and scale of its nodes to the integrand, using its mode and local curvature. `laplace` performed poorly overall, as it uses a Gaussian approximation - failing to capture skewness.
 
 ## B2 - Importance Sampling {#sec-b2}
+
+### Bias
 
 ```{r}
 #| label: b2-run
@@ -239,8 +244,8 @@ profile_df <- data.frame(
 #| label: fig-b2
 #| fig-cap: "Importance sampling estimate of the log-likelihood ($m = 20$, 200 repetitions per $R$)"
 #| fig-subcap:
-  #|   - "Bias, with $\\pm 2$ Monte Carlo SE bars; dashed line is the Jensen prediction $-\\mathrm{SE}^2/2$"
-  #|   - "SD across repetitions vs the package's mean reported MC SE"
+#|   - "Bias, with $\\pm 2$ Monte Carlo SE bars; dashed line is the Jensen prediction $-\\mathrm{SE}^2/2$"
+#|   - "SD across repetitions vs the package's mean reported MC SE"
 #| layout-ncol: 2
 #| echo: false
 
@@ -261,19 +266,17 @@ ggplot(spread, aes(R, value, colour = measure)) +
 
 ```
 
-Notice in @fig-b2-1 that the bias of the `is` method decreases as we take more draws before settling at $0$ for $R=1000$. The SD across $200$ repetitions and the package's mean reported Monte Carlo SE agree to within `r round(100 * max(abs(results$sd / results$mean_mc_se - 1)))`% at every $R$, as shown in @fig-b2-2; for example, at $R = 100$ the SD is `r round(results$sd[3], 3)` and the MCSE is `r round(results$mean_mc_se[3], 3)`.
+In @fig-b2-1 the bias of `is` shrinks as $R$ increases, reaching $0$ by $R=1000$. The SD across $200$ repetitions agrees with the package's reported MCSE to within `r round(100 * max(abs(results$sd / results$mean_mc_se - 1)))`% at every $R$ (@fig-b2-2).
 
-Each $\hat L_j$ is unbiased, $\ell$ sums $\log \hat L_j$, and $\log$ is concave. Jensen's inequality, with $\mathbb{E}[\hat L_j] = L_j$, gives
+Since each $\hat L_j$ is unbiased and $\log$ is concave, Jensen's inequality gives
 
-$$ \mathbb{E}[\log \hat L_j] \le \log \mathbb{E}[\hat L_j] = \log L_j, $$
+$$ \mathbb{E}[\log \hat L_j] \le \log L_j, \qquad \text{bias} \approx -\frac{\mathrm{SE}_j^2}{2}, $$
 
-hence the estimate is biased downwards. A second-order Taylor expansion gives, per cluster,
+by a second-order Taylor expansion. Summed over clusters, this is the dashed line in @fig-b2-1. As $\mathrm{SE}_j^2 \propto 1/R$, the bias shrinks like $1/R$, faster than the SD ($1/\sqrt{R}$). It is clear at $R=10$ (`r round(results$bias[1], 3)`, MCSE `r round(results$bias_mcse[1], 3)`) but undetectable by $R=100$, where the predicted bias is smaller than its MCSE.
 
-$$ \text{bias} \approx -\frac{\mathrm{Var}(\hat L_j)}{2L_j^2} \approx -\frac{\mathrm{SE}_j^2}{2}. $$
+### Fresh draws
 
-here $\mathrm{SE}_j$ is the package's Monte Carlo SE of $\log \hat L_j$. Summing over the 50 clusters gives $\text{bias} \approx -\tfrac12 \sum_j \mathrm{SE}_j^2$, shown by the dashed line in @fig-b2-1. Since $\mathrm{Var}(\hat L_j) \propto 1/R$, the bias shrinks like $1/R$, faster than the SD, which shrinks like $1/\sqrt{R}$.
-
-At $R = 10$ the bias is negative (`r round(results$bias[1], 3)`, MCSE `r round(results$bias_mcse[1], 3)`) but at $R = 100$ the predicted bias (`r round(results$predicted[3], 3)`) is smaller than its MCSE (`r round(results$bias_mcse[3], 3)`), so it is too small to detect with 200 repetitions.
+We now show why draws need to stay fixed for `is`. As otherwise the optimiser's BFGS estimates the gradient using finite differences in $\ell$ at nearby values of $\theta$. When fresh draws are used, these differences are dominated by Monte Carlo noise rather than genuine changes in $\ell$, making the estimated gradient unreliable. Consequently, the optimiser takes large steps in random directions and may move towards extreme values of $\theta$, where `cluster_modes()` is unable to find the modes, leading to the observed error.
 
 ```{r}
 #| label: fig-b2-crn
@@ -330,6 +333,7 @@ fixed_row <- data.frame(fit = "Fixed draws", beta0 = fixed_fit$par[1],
                         error = NA)
 
 b2_fits <- rbind(fresh_fits, fixed_row)
+b2_fits_subset<-b2_fits[, c("fit", "error")]
 ```
 
 ```{r}
@@ -337,25 +341,18 @@ b2_fits <- rbind(fresh_fits, fixed_row)
 #| tbl-cap: "Five IS fits (R = 100) drawing fresh draws at every likelihood evaluation, compared with one fit using fixed draws. True values: $\\beta_0 = -0.5$, $\\beta_1 = 1$, $\\sigma = 1.5$. Convergence code 0 = converged."
 #| echo: false
 
-tab <- b2_fits
+tab <- b2_fits_subset
 if (all(is.na(tab$error))) tab$error <- NULL   # drop error column if nothing failed
 
 knitr::kable(
   tab, row.names = FALSE, digits = 3,
-  col.names = c("Fit", "$\\beta_0$", "$\\beta_1$", "$\\sigma$", "Conv.",
-                "Evals", "SE($\\beta_1$)", "SE($\\log\\sigma$)",
+  col.names = c("Fit",
                 if (!is.null(tab$error)) "Error"),
   escape = FALSE
 )
 ```
 
-Using the same draws throughout the fit produces a smooth curve for $\ell(\sigma)$ @fig-b2-crn, allowing the optimiser to follow it towards the maximum. In contrast, using fresh draws at each evaluation produces a jagged curve, as every point is affected by its own Monte Carlo error, which is approximately the MC SE at $R = 100$ (`r round(results$mean_mc_se[3], 2)`).
-
-This difference is reflected in the fits shown in @tbl-b2-fits. `r sum(!is.na(b2_fits$error))` of the 5 fresh-draw fits failed, returning the error "Newton backtracking failed to improve a cluster log-integrand". The fixed-draws fit, however, converged successfully, producing $\hat\sigma =$ `r round(b2_fits$sigma[6], 3)` with sensible standard errors.
-
-The reason fresh draws cause the optimiser to fail is that BFGS estimates the gradient using finite differences in $\ell$ at nearby values of $\theta$. When fresh draws are used, these differences are dominated by Monte Carlo noise rather than genuine changes in $\ell$, making the estimated gradient unreliable. Consequently, the optimiser takes large steps in random directions and may move towards extreme values of $\theta$, where `cluster_modes()` is unable to find the modes, leading to the observed error.
-
-This demonstrates why `fit_rint()` uses a single fixed set of draws throughout the fit (common random numbers): doing so ensures that $\ell(\theta)$ is a smooth, deterministic function that `optim()` can reliably maximise.
+Using the same draws throughout the fit produces a smooth curve for $\ell(\sigma)$ @fig-b2-crn, allowing the optimiser to follow it towards the maximum. In contrast, using fresh draws at each evaluation produces a jagged curve, as every point is affected by its own Monte Carlo error, which is approximately the MC SE at $R = 100$ (`r round(results$mean_mc_se[3], 2)`). In @tbl-b2-fits. `r sum(!is.na(b2_fits$error))` of the 5 fresh-draw fits failed,
 
 ## B3 - Cost {#sec-B3}
 
@@ -598,6 +595,7 @@ mt_long <- data.frame(
   ms = 1000 * c(mt$vectorised_seconds, mt$separate_seconds),
   finder = rep(c("Vectorised cluster_modes()", "Per-cluster optimize()"), each = nrow(mt))
 )
+mt_long
 
 ggplot(mt_long, aes(J, ms, colour = finder)) +
   geom_point() +
@@ -609,9 +607,7 @@ ggplot(mt_long, aes(J, ms, colour = finder)) +
   theme_bw() + theme(legend.position = "bottom")
 ```
 
-From the perspective of both cost and accuracy we would use `agh`. Its cost is dominated by the vectorised mode search, which it shares with `laplace`, so it is only slightly slower than `gh` (the quickest method in all cases) per evaluation. In the $J=50$ case the difference is `r abs(wide$median_seconds.agh - wide$median_seconds.gh)[1]` @fig-b3-loglik, yet @fig-b1 showed it is more accurate, especially for larger clusters.
-
-`laplace` is fastest but its error does not shrink, and that bias would carry into the fitted parameters. `gh` is cheap but inaccurate when the integrand is concentrated away from zero @fig-b1. `is` is slowest, scaling with $R$ draws per cluster, and its Monte Carlo noise makes `ℓ` rough, which hampers the optimiser unless the draws are held fixed as seen in @fig-b2-crn.
+If a fit needed hundreds of likelihood evaluations, `gh` would be attractive as one of the cheapest methods per evaluation (@fig-b3-loglik). However, @fig-b1 showed it loses accuracy as clusters grow, and in Part C this led to under-coverage for $\sigma$ at $m=20$. It is therefore a reasonable trade-off only for small clusters; otherwise the small extra cost of `agh` is worth paying.
 
 # Part C
 
@@ -627,7 +623,9 @@ From the perspective of both cost and accuracy we would use `agh`. Its cost is d
 
 **Performance measures**: bias and empirical SE for $\beta_1$ and $\sigma$, which together measure accuracy and coverage of the nominal 95% Wald interval (for $\sigma$, constructed on the log scale), which assesses whether the Hessian-based standard errors can be trusted. Failure rate and computing time are also reported, every measure is accompanied by its Monte Carlo SE.
 
-**Failed fits:** a fit fails if `optim` returns a non-zero convergence code, an error is thrown or the standard errors cannot be computed. Failures are counted per method and scenario and excluded from the other measures. Reporting the failure rate matters because excluding them could make an unreliable method appear better than it is.
+### C1.1 Treatment of failures
+
+A fit fails if `optim` returns a non-zero convergence code, an error is thrown or the standard errors cannot be computed. Failures are counted per method and scenario and excluded from the other measures. Reporting the failure rate matters because excluding them could make an unreliable method appear better than it is.
 
 ## C2 - Number of replicates {#sec-c2}
 
@@ -693,9 +691,7 @@ The picture for $\sigma$ is less even (@tbl-sigma, @fig-sigma-coverage). At $m=2
 
 ### Timing
 
-`gh` and `laplace` were the fastest methods at $m=2$ and $m=5$ ($0.43$ to $0.58$s per fit), with `agh` about twice as slow and `is` being the slowest, taking $0.99$s at $m=2$ and $1.49$s at $m=5$ (@fig-c3-time). By $m=20$, the gap between `laplace`, `gh` and `agh` had mostly closed ($0.97$, $1.01$ and $1.06$s), while `is` was still more than twice as slow as the others at $2.52$s.
-
-Run time grew with $m$ for `gh`, `is` and `laplace`; `agh`, however, did not rise consistently with $m$ ($0.92$, $0.80$, $1.06$s). The study ran parallel on 15 workers, so the times included some slowdown from competing workers.
+`gh` and `laplace` were the fastest methods at $m=2$ and $m=5$ ($0.43$ to $0.58$s per fit), with `agh` about twice as slow and `is` being the slowest, taking $0.99$s at $m=2$ and $1.49$s at $m=5$ (@fig-c3-time). By $m=20$, the gap between `laplace`, `gh` and `agh` had mostly closed ($0.97$, $1.01$ and $1.06$s), while `is` was still more than twice as slow as the others at $2.52$s. Run time grew with $m$ for `gh`, `is` and `laplace`; `agh`, however, did not rise consistently with $m$ ($0.92$, $0.80$, $1.06$s). The study ran parallel on 15 workers, so the times included some slowdown from competing workers.
 
 ```{r}
 #| include: false
@@ -717,8 +713,8 @@ performance_table <- function(results, param) {
 #| label: tbl-beta
 #| tbl-cap: "Performance for $\\beta_1$ by cluster size"
 #| tbl-subcap:
-  #|   - "m = 2"
-  #|   - "m = 5"
+#|   - "m = 2"
+#|   - "m = 5"
 #|   - "m = 20"
 #| echo: false
 
@@ -732,8 +728,8 @@ for (cluster_size in c(2, 5, 20)) {
 #| label: tbl-sigma
 #| tbl-cap: "Performance for $\\sigma$ by cluster size"
 #| tbl-subcap:
-  #|   - "m = 2"
-  #|   - "m = 5"
+#|   - "m = 2"
+#|   - "m = 5"
 #|   - "m = 20"
 #| echo: false
 
@@ -758,36 +754,33 @@ time_df <- data.frame(method = time_df$method, m = time_df$m,
                       mean = time_df$time[, "mean"], se = time_df$time[, "se"])
 time_df$method <- factor(time_df$method, levels = c("laplace", "gh", "agh", "is"))
 
-ggplot(time_df, aes(m, mean, colour = method)) +
-  geom_point() +
-  geom_line() +
-  geom_errorbar(aes(ymin = mean - 1.96 * se, ymax = mean + 1.96 * se), width = 0.05) +
-  scale_x_log10(breaks = c(2, 5, 20)) +
+dodge <- position_dodge(width = 0.4)
+
+ggplot(time_df, aes(factor(m), mean, colour = method, group = method)) +
+  geom_line(position = dodge, alpha = 0.5) +
+  geom_pointrange(aes(ymin = mean - 1.96 * se, ymax = mean + 1.96 * se),
+                  position = dodge, size = 0.3) +
   scale_y_log10() +
   scale_colour_manual(values = c(laplace = "blue", gh = "green", agh = "red", is = "purple")) +
-  labs(x = "Cluster size, m (log scale)", y = "Mean time per fit (s, log scale)", colour = "Method") +
+  labs(x = "Cluster size, m", y = "Mean time per fit (s, log scale)", colour = "Method") +
   theme_bw()
 ```
 
 ## C4 - Recommendations {#sec-c4}
 
-These results follow from @sec-b1 and @sec-B3.
+We recommend `agh` ($K=7$) as the default. Across all six scenarios it was never the worst method, and its cost is modest (@fig-c3-time). Like `laplace`, `agh` uses each practice's mode and curvature, but it shifts and scales several quadrature points around the peak and evaluates the actual integrand there, so it captures more of the shape and had the lowest error in @fig-b1. The alternatives are only acceptable in some settings.
 
-We recommend `agh` ($K=7$) as the default. Across all six scenarios it was never the worst method, its estimates matched the other accurate methods, and its cost is modest (@fig-c3-time). The alternatives are only acceptable in some settings. This is as `agh` also uses the mode and curvature like `gh`, but shifts and scales several quadrature points around each practice’s peak. It evaluates the actual integrand at those points and combines the values using corrected weights. It tends to captures more of the shape than `laplace` and `gh` but can be more expensive. Notice `agh` finds the lowest absolute error in @fig-b1 but also takes longer than the other two methods in @fig-b3-loglik.
+**Small clusters, large** $\sigma$ ($m=2$, $\sigma=1.5$): avoid `laplace`. Its empirical SE was $1.39$ for $\beta_1$ (against $0.44$ to $0.59$ for the others) and $3.57$ for $\sigma$, and its $\beta_1$ interval under-covered ($0.934$). With only two binary observations, $h_j(u)$ is skewed, but `laplace` approximates it with a normal shape around its peak, so it misses this skewness.
 
-**Small clusters, large** $\sigma$ ($m=2$, $\sigma=1.5$): **avoid `laplace`.** Its empirical SE was $1.39$ for $\beta_1$ (against $0.44$ to $0.59$ for the others) and $3.57$ for $\sigma$, and its $\beta_1$ interval under-covered ($0.934$). With only two binary observations, $h_j(u)$ is skewed and far from normal. `Laplace` approximates each practice’s integrand with a normal shape around its peak. `cluster_modes()` finds where that peak is and its curvature, which describes its width. Laplace then uses the peak’s height and width to approximate the integral. It is relatively cheap because it doesn’t evaluate lots of points @fig-b3-loglik , but can miss skewness or other departures from a normal shape, which we see here.
-
-**Large clusters, large** $\sigma$ ($m=20$, $\sigma=1.5$): **avoid `gh`**, whose coverage for $\sigma$ fell to $0.918$ while the others stayed at $0.945$. As $m$ grows, $h_j(u)$ concentrates around a mode away from zero, but `gh` places its nodes according to the normal weighting function (centred around zero) i.e. it almost looks like a normal distribution with mean $0$ so it struggles to capture this mode movement away from $0$. Notice in @fig-b1 that `gh` reaches a final absolute error of `r signif(tail(errors_2$gh_error, 1), 3)` in the $m=2$ case, versus `r signif(tail(errors_20$gh_error, 1), 3)` in the $m=20$ case.
+**Large clusters, large** $\sigma$ ($m=20$, $\sigma=1.5$): avoid `gh`, whose coverage for $\sigma$ fell to $0.918$ while the others stayed at $0.945$. As $m$ grows, $h_j(u)$ concentrates around a mode away from zero, but `gh` places its nodes around zero, so it struggles to capture this.
 
 **Moderate clusters (**$m=5$): all four methods performed essentially identically, so the cheaper `laplace` or `gh` would also be acceptable.
 
-**Small** $\sigma$, small clusters ($m=2$, $\sigma=0.5$): coverage for $\sigma$ was about $0.88$ for `gh`, `agh` and `is`. Since these three agree closely, this most likely reflects the Wald interval for $\sigma$ performing poorly with little data per cluster, rather than integration error. `laplace`'s higher coverage here should not be read as a better likelihood approximation.
+**Small clusters, small** $\sigma$ ($m=2$, $\sigma=0.5$): coverage for $\sigma$ was about $0.88$ for `gh`, `agh` and `is`. Since these three agree closely, this most likely reflects the Wald interval for $\sigma$ performing poorly with little data per cluster, rather than integration error.
 
-**`is`** offered no advantage in any scenario. Its estimates matched `agh`, but it was the slowest method ($2.52$s per fit at $m=20$). This is as `is` estimates each $L_j$ by drawing $R$ values of $u$ from a $t_4$ proposal, centred at the practice's mode and scaled by its curvature (again from `cluster_modes()`). It then averages the ratio of the integrand to the proposal density over those draws. The heavier tails of the $t$ proposal keep the weights stable, and $\hat L_j$ is unbiased. However, taking logs makes $\ell$ biased downwards (see @sec-b2). and this bias only vanishes as $R$ grows. Its Monte Carlo noise also makes $\ell$ jagged unless the same draws are reused throughout @fig-b2-crn which is why the fresh-draw fits failed in @tbl-b2-fits. Because it evaluates $R$ draws per practice, it is the slowest method in @fig-b3-loglik.
+**`is`** offered no advantage. Its estimates matched `agh`, but it was the slowest method ($2.52$s per fit at $m=20$; @fig-b3-loglik) because it evaluates $R$ draws per practice. Its $\ell$ is also biased downwards and jagged unless the same draws are reused (@sec-b2).
 
 # Part D
-
-## D1 - Analysis
 
 ```{r}
 #| echo: false
@@ -903,11 +896,13 @@ knitr::kable(
 
 ```
 
-All four methods give very similar estimates (@tbl-d1): `agh` and `is` agree to two decimal places, and `laplace` and `gh` differ by at most $0.02$ in $\beta_0$ and $\beta_1$. Within the confidence intervals, the only visible differences are in $\hat\sigma$, where `laplace` is lowest ($1.64$) and `gh` highest with the widest interval ($1.77$), consistent with the integration error seen in @sec-c3.
+## D1 - Analysis
 
-Exponentiating $\hat\beta_1$ gives the odds ratio for age: a one-unit increase in age multiplies a patient's odds of attending by `r sprintf("%.2f", exp(fits$agh$par[2]))` (95% CI excludes 1), so we find age has a significant effect as expected from @fig-d1-eda-2
+All four methods give very similar estimates (@tbl-d1): `agh` and `is` agree to two decimal places, and `laplace` and `gh` differ by at most $0.02$ in $\beta_0$ and $\beta_1$, well within the confidence intervals. The only visible differences are in $\hat\sigma$, where `laplace` is lowest ($1.64$) and `gh` highest with the widest interval ($1.77$), consistent with the integration error seen in @sec-c3.
 
-The between-practice SD $\hat\sigma =$ `r round(exp(fits$agh$par[3]), 2)` is large on the log-odds scale, about twice the age effect, so which practice a patient attends matters substantially also as expected from @fig-d1-eda-1. @tbl-SD-interp shows the predicted attendance probability for a patient of average age at a practice one SD above and below average and we see they vary wildly.
+Exponentiating $\hat\beta_1$, a one-unit increase in age multiplies a patient's odds of attending by `r sprintf("%.2f", exp(fits$agh$par[2]))` (95% CI excludes 1), a clear positive effect as expected from @fig-d1-eda-2.
+
+The between-practice SD $\hat\sigma =$ `r round(exp(fits$agh$par[3]), 2)` is large on the log-odds scale, about twice the age effect, so which practice a patient attends matters substantially, as @fig-d1-eda-1 suggested. @tbl-SD-interp shows how much the predicted attendance probability differs between practices one SD above and below average.
 
 ```{r}
 #| label: tbl-SD-interp
@@ -1019,9 +1014,9 @@ d2_tab <- data.frame(
 knitr::kable(d2_tab, digits = 2, col.names = c("Model", "CV score", "SE"))
 ```
 
-Notice in @tbl-D2-CV that our random intercept model beats the pooled regression model `glm`, with a CV of `r d2_tab$cv[1]` (SE = `r d2_tab$SE[1]` ) against GLM's `r d2_tab$cv[2]` (SE = `r d2_tab$SE[2]`) where our held-out log-likelihood is the error measure on a 5 fold cross-validation test folding out random practices.
+@tbl-D2-CV shows that the random-intercept model beats the pooled `glm`, with a 5-fold cross-validated held-out log-likelihood of `r round(d2_tab$cv[1], 2)` (SE `r round(d2_tab$se[1], 2)`) against `r round(d2_tab$cv[2], 2)` (SE `r round(d2_tab$se[2], 2)`), with folds leaving out whole practices.
 
-It would be incorrect to fold out random patients instead of practices as patients are correlated through a shared practice effect - folding out random patients would lead to information leakage through their practice mates left behind. Making the CV scores over-optimistic particularly for the random-intercept model. Further we would lose independence in our held-out folds making our SE values wrong, and since our score $\sum log L_j$ is defined on practices, it needs patient practices together.
+Leaving out random patients would be incorrect. Patients share a practice effect, so practice-mates in the training set would leak information about held-out patients, making scores over-optimistic, especially for the random-intercept model. Folds would also no longer be independent, invalidating the SE, and since $\sum_j \log L_j$ is defined per practice, each practice must stay in one fold.
 
 # Appendix
 
