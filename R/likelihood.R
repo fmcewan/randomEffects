@@ -25,7 +25,7 @@ validate_method <- function(method) {
 #' @export
 #' @examples
 #' data <- rint_sim(J = 50, m = 5, beta = c(-0.5, 1), sigma = 1)
-#' cd <- cluster_data(data$y, data$X, data$group)
+#' cd <- cluster_data(data$y, data$X, factor(data$group))
 #' cluster_loglik(c(-0.5, 1, 0), cd, method = "laplace")
 cluster_loglik <- function(theta, cd, method, K=NULL, draws=NULL) {
 
@@ -53,7 +53,7 @@ cluster_loglik <- function(theta, cd, method, K=NULL, draws=NULL) {
 #' @export
 #' @examples
 #' data <- rint_sim(J = 50, m = 5, beta = c(-0.5, 1), sigma = 1)
-#' cd <- cluster_data(data$y, data$X, data$group)
+#' cd <- cluster_data(data$y, data$X, factor(data$group))
 #' marginal_loglik(c(-0.5, 1, 0), cd, method = "laplace")
 marginal_loglik <- function(theta, cd, method, K=NULL, draws=NULL) {
     sum(cluster_loglik(theta, cd, method, K, draws))
