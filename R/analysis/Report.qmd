@@ -3,13 +3,14 @@ title: "Report"
 format:
   pdf:
     code-overflow: wrap
+    number-sections: true
 execute:
   echo: false
 ---
 
 ```{r}
-library(here) #TODO
-library(ggplot2)
+set.seed(4113)
+library(here)
 group <- 5
 source(here("raw_data", "group_data.R"))
 gp <- group_data(group)
@@ -19,6 +20,8 @@ gp <- group_data(group)
 #| label: setup
 #| include: false
 devtools::load_all(here::here())
+
+library(ggplot2)
 ```
 
 GenAI declaration, README and final render check - (D or E, to be agreed)
@@ -73,7 +76,6 @@ Notice in @tbl-tests that all `r sum(tab$Checks)` pass as required.
 ```{r}
 #| echo: false
 # Simulation settings
-set.seed(4113)
 beta <- c(-0.5,1)
 sigma <- 1.5
 theta <- c(beta, log(sigma))
@@ -167,14 +169,14 @@ Every additional observation $m$ adds another log-likelihood contribution to $h_
 
 Meaning `agh` reached a lower absolute error and converged faster in both cases. The final absolute errors (`agh`, `gh`, `laplace`) for $m=2$ are (`r signif(tail(errors_2$agh_error, 1), 3)`, `r signif(tail(errors_2$gh_error, 1), 3)`, `r signif(tail(errors_2$laplace_error, 1), 3)`), and for $m=20$ they are (`r signif(tail(errors_20$agh_error, 1), 3)`, `r signif(tail(errors_20$gh_error, 1), 3)`, `r signif(tail(errors_20$laplace_error, 1), 3)`).
 
-## B2 - Importance Sampling  {#sec_b2}
+## B2 - Importance Sampling  {#sec-b2}
 
 ```{r}
 #| label: b2-run
 #| include: false
 #| cache: true
 
-
+set.seed(4113) #move back to right seed
 cd20 <- cluster_data(sim_data_20$y, sim_data_20$X, factor(sim_data_20$group)) #this runs on B1 dataset
 
 truth <- marginal_loglik(theta, cd20, method = "agh", K = 50)
@@ -258,13 +260,13 @@ hence the estimate is biased downwards. A second-order Taylor expansion gives, p
 
 $$ \text{bias} \approx -\frac{\mathrm{Var}(\hat L_j)}{2L_j^2} \approx -\frac{\mathrm{SE}_j^2}{2}. $$
 
-here $\mathrm{SE}_j$ is the package's Monte Carlo SE of $\log \hat L_j$. Summing over the 50 clusters gives $\text{bias} \approx -\tfrac12 \sum_j \mathrm{SE}_j^2$\$, shown by the dashed line in @fig-b2-1. Since $\mathrm{Var}(\hat L_j) \propto 1/R$, the bias shrinks like $1/R$, faster than the SD, which shrinks like $1/\sqrt{R}$.
+here $\mathrm{SE}_j$ is the package's Monte Carlo SE of $\log \hat L_j$. Summing over the 50 clusters gives $\text{bias} \approx -\tfrac12 \sum_j \mathrm{SE}_j^2$, shown by the dashed line in @fig-b2-1. Since $\mathrm{Var}(\hat L_j) \propto 1/R$, the bias shrinks like $1/R$, faster than the SD, which shrinks like $1/\sqrt{R}$.
 
 At $R = 10$ the bias is negative (`r round(results$bias[1], 3)`, MCSE `r round(results$bias_mcse[1], 3)`) but at $R = 100$ the predicted bias (`r round(results$predicted[3], 3)`) is smaller than its MCSE (`r round(results$bias_mcse[3], 3)`), so it is too small to detect with 200 repetitions.
 
 ```{r}
 #| label: fig-b2-crn
-#| fig-cap: "IS log-likelihood (R = 100) as $\\σ$ varies with $\\β$ fixed at the truth: reusing the same draws gives a smooth curve, fresh draws at each evaluation give a jagged one"
+#| fig-cap: "IS log-likelihood (R = 100) as $\\sigma$ varies with $\\beta$ fixed at the truth: reusing the same draws gives a smooth curve, fresh draws at each evaluation give a jagged one"
 #| echo: false
 #| fig-width: 6
 #| fig-height: 3.5
@@ -280,6 +282,8 @@ ggplot(profile_df, aes(sigma, ell, colour = draws)) +
 #| include: false
 #| cache: true
 #| dependson: b2-run
+
+set.seed(4113) #move back to right seed
 
 # Starting values as in fit_rint(): pooled logistic regression, log sigma = 0
 start <- c(unname(coef(glm(cd20$y ~ cd20$X - 1, family = binomial))), 0)
@@ -307,13 +311,21 @@ fresh_fits <- do.call(rbind, lapply(1:5, function(k) {
   })
 }))
 
-fixed_fit <- fit_rint(cd20, method = "is", draws = is_draws(cd20, R = 100))
+####TODO
+fixed_row <- tryCatch({
+  fixed_fit <- fit_rint(cd20, method = "is", draws = is_draws(cd20, R = 100))
+  data.frame(fit = "Fixed draws", beta0 = fixed_fit$par[1],
+             beta1 = fixed_fit$par[2], sigma = exp(fixed_fit$par[3]),
+             convergence = fixed_fit$convergence, evals = NA,
+             se_beta1 = fixed_fit$se[2], se_logsigma = fixed_fit$se[3],
+             error = NA)
+}, error = function(e) {
+  data.frame(fit = "Fixed draws", beta0 = NA, beta1 = NA, sigma = NA,
+             convergence = NA, evals = NA, se_beta1 = NA, se_logsigma = NA,
+             error = conditionMessage(e))
+})
 
-fixed_row <- data.frame(fit = "Fixed draws", beta0 = fixed_fit$par[1],
-                        beta1 = fixed_fit$par[2], sigma = exp(fixed_fit$par[3]),
-                        convergence = fixed_fit$convergence, evals = NA,
-                        se_beta1 = fixed_fit$se[2], se_logsigma = fixed_fit$se[3],
-                        error = NA)
+
 
 b2_fits <- rbind(fresh_fits, fixed_row)
 ```
@@ -450,11 +462,13 @@ run_b3_cost <- function(settings = b3_settings) {
   
   theta <- c(settings$beta, log(settings$sigma))
   
-  # Preparing datasets and fixed draws before starting timing
   datasets <- lapply(settings$cluster_counts, function(J) {
-    rint_sim(J = J, m = settings$m, beta = settings$beta,
-             sigma = log(settings$sigma))
+    sim <- rint_sim(J = J, m = settings$m, beta = settings$beta,
+                    sigma = log(settings$sigma))
+    cluster_data(sim$y, sim$X, factor(sim$group))
   })
+  
+  
   draws <- lapply(datasets, function(cd) {
     is_draws(cd, R = settings$R_is, df = settings$df_is)
   })
@@ -582,7 +596,7 @@ From the perspective of both cost and accuracy we would use `agh`. Its cost is d
 
 # Part C
 
-## C1 - Design  {#sec_C1}
+## C1 - Design  {#sec-c1}
 
 **Aims:** Compare the four methods as ways of fitting the model by analysing the performance measures detailed below.
 
@@ -596,21 +610,21 @@ From the perspective of both cost and accuracy we would use `agh`. Its cost is d
 
 Failed fits: a fit fails if `optim` returns a non-zero convergence code, an error is thrown or the standard errors cannot be computed. Failures are counted per method and scenario and excluded from the other measures. Reporting the failure rate matters because excluding them could make an unreliable method appear better than it is.
 
-## C2 - Number of replicates  {#sec_C2}
+## C2 - Number of replicates  {#sec-c2}
 
 ```{r}
 
 ```
 
-## C3 - Results  {#sec_C3}
+## C3 - Results  {#sec-c3}
 
 ```{r}
 
 ```
 
-## C4 - Recommendations  {#sec_c4}
+## C4 - Recommendations  {#sec-c4}
 
-These results follow from @sec-b1 and @sec-B3. Notice `gh()` doesn’t do very well for high cluster sizes. When cluster sizes increase, the function becomes more concentrated around its mode (which could no longer be centred at 0). Notice in @fig-b1 that `gh` reaches a final absolute error of `signif(tail(errors_2$gh_error, 1), 3)` in the $m=2$ case, versus `signif(tail(errors_20$gh_error, 1), 3)` in the $m=20$ case. Thus bigger cluster sizes negatively affect `gh` because it places its nodes according to the normal weighting function (centred around zero) i.e. it almost looks like a normal distribution with mean 0.
+These results follow from @sec-b1 and @sec-B3. Notice `gh()` doesn’t do very well for high cluster sizes. When cluster sizes increase, the function becomes more concentrated around its mode (which could no longer be centred at 0). Notice in @fig-b1 that `gh` reaches a final absolute error of `r signif(tail(errors_2$gh_error, 1), 3)` in the $m=2$ case, versus `r signif(tail(errors_20$gh_error, 1), 3)` in the $m=20$ case. Thus bigger cluster sizes negatively affect `gh` because it places its nodes according to the normal weighting function (centred around zero) i.e. it almost looks like a normal distribution with mean 0.
 
 `laplace` instead approximates each practice’s integrand with a normal shape around its peak. `cluster_modes()` finds where that peak is and its curvature, which describes its width. Laplace then uses the peak’s height and width to approximate the integral. It is relatively cheap because it doesn’t evaluate lots of points @tbl-b3-loglik , but can miss skewness or other departures from a normal shape. Notice how its absolute error remains constant in @fig-b1.
 
@@ -622,9 +636,9 @@ These results follow from @sec-b1 and @sec-B3. Notice `gh()` doesn’t do very w
 
 Thus we recommend `agh` for all cluster sizes and amounts of between-cluster variation considered. It achieved the lowest error in @fig-b1 for both $m = 2$ and $m = 20$, at only a small cost over `laplace` @tbl-b3-loglik. `laplace` is a reasonable faster alternative only for large clusters ($m = 20$), where each integrand is close to normal. It should be avoided for small clusters with large $\sigma$, where the integrand is skewed. `gh` is only adequate when both $m$ and $\sigma$ are small, so the integrand stays near zero. `is` offers no advantage: it is slower and its Monte Carlo noise must be controlled with fixed draws.
 
-Since there are a median of `r median(table(gp$practice))` patients per practice with `length(unique(gp$practice))` practices. We are the closest to the $m=5$ case above and therefore use `agh` ($K=7$) with $m=5$ and $J=50$.
+Since there are a median of `r median(table(gp$practice))` patients per practice with `r length(unique(gp$practice))` practices. We are the closest to the $m=5$ case above and therefore use `agh` ($K=7$) with $m=5$ and $J=50$.
 
-# Part D (10 marks)
+# Part D
 
 ## D1 - Analysis
 
@@ -633,7 +647,7 @@ Since there are a median of `r median(table(gp$practice))` patients per practice
 
 #data
 cd <- cluster_data(gp$attended, model.matrix(~ age, data = gp), factor(gp$practice))
-raws_is <- is_draws(cd, R = 100)
+draws_is <- is_draws(cd, R = 100)
 ```
 
 ```{r}
@@ -824,8 +838,9 @@ d2_tab <- data.frame(
 knitr::kable(d2_tab, digits = 2, col.names = c("Model", "CV score", "SE"))
 ```
 
+# Appendix
+
 ```{r}
-# Appendix: Code
 #| label: appendix
 #| ref.label: !expr setdiff(knitr::all_labels(), "appendix")
 #| echo: true
