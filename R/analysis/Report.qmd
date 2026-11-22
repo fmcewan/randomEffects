@@ -4,8 +4,7 @@ format:
   pdf:
     code-overflow: wrap
     number-sections: true
-    fig-pos: "H"
-    tbl-pos: "H"
+    latex-auto-install: false
 execute:
   echo: false
 ---
@@ -37,23 +36,25 @@ We declare that parts of this submission incorporate contributions from GenAI so
 
 In our package we have data functions:
 
-- `gauss_hermite(n)`:produces Gauss–Hermite nodes and weights for weight function $e^{x^2}$, by the Golub–Welsch method.
+- `gauss_hermite(n)`:produces Gauss–Hermite nodes and weights for weight function $e^{-x^2}$, by the Golub–Welsch method.
 
 - `cluster_integral(theta, cd, j)`: calculates the true marginal likelihood of a cluster
 
-- `rint_sim(J, m, beta, sigma)`: simulate data according to the model with one standard-normal covariate
+- `rint_sim(J, m, beta, log(sigma))`: simulate data according to the model with one standard-normal covariate
 
 - `is_draws(cd, R, df)`: returns a fixed $J \times R$ matrix of standardised draws from a $t$-distribution with `df` degrees of freedom, with one row per cluster, generated once and reused at every $\theta$ (common random numbers).
 
 - `cluster_data(y, X, group)`: prepares and validates the data before calculating the marginal log-likelihood
 
+- `cluster_modes()` finds where `laplace` 's peak is and its curvature, which describes its width.
+
+  - Note `cluster_modes` uses Newton’s method which is suitable here because each cluster’s log-integrand has a strictly negative second derivative, so will give a unique mode. A zero gradient, therefore, identifies that mode rather than a minimum or saddle point. Backtracking safeguards the updates by shortening steps that do not sufficiently improve the objective. 
+
 ## Approximation functions:
 
 - `gh`: non-adaptive numerical integral based on Gauss-Hermite.
 
-- `laplace` approximates each practice’s integrand with a normal shape around its peak. `cluster_modes()` finds where that peak is and its curvature, which describes its width. `laplace` then uses the peak’s height and width to approximate the integral.
-
-  - Note `cluster_modes` uses Newton’s method which is suitable here because each cluster’s log-integrand has a strictly negative second derivative, so will give a unique mode. A zero gradient, therefore, identifies that mode rather than a minimum or saddle point. Backtracking safeguards the updates by shortening steps that do not sufficiently improve the objective. 
+- `laplace` approximates each practice’s integrand with a normal shape around its peak. `laplace` then uses the peak’s height and width to approximate the integral.
 
 - `agh` also uses the mode and curvature, but shifts and scales several quadrature points around each practice’s peak. It evaluates the actual integrand at those points and combines the values using corrected weights.
 
@@ -65,6 +66,7 @@ In our package we have data functions:
 #| label: tbl-tests
 #| tbl-cap: "Table of all tests in package passing without failures"  
 #| echo: false
+#| message: false
 
 res <- devtools::test(reporter = "silent")
 df  <- as.data.frame(res)
@@ -84,7 +86,7 @@ rownames(tab) <- NULL
 knitr::kable(tab, booktabs = TRUE, align = "lrrrrr")
 ```
 
-Notice in @tbl-tests that all `r sum(tab$Checks)` pass as required.
+Notice in @tbl-tests that all `r tab$Checks[tab$File == "Total"]` pass as pass as required.
 
 # Part B
 
@@ -245,7 +247,7 @@ profile_df <- data.frame(
 #| fig-cap: "Importance sampling estimate of the log-likelihood ($m = 20$, 200 repetitions per $R$)"
 #| fig-subcap:
 #|   - "Bias, with $\\pm 2$ Monte Carlo SE bars; dashed line is the Jensen prediction $-\\mathrm{SE}^2/2$"
-#|   - "SD across repetitions vs the package's mean reported MC SE"
+  #|   - "SD across repetitions vs the package's mean reported MC SE"
 #| layout-ncol: 2
 #| echo: false
 
@@ -343,6 +345,7 @@ b2_fits_subset<-b2_fits[, c("fit", "error")]
 
 tab <- b2_fits_subset
 if (all(is.na(tab$error))) tab$error <- NULL   # drop error column if nothing failed
+tab$error[is.na(tab$error)] <- "Converged"
 
 knitr::kable(
   tab, row.names = FALSE, digits = 3,
@@ -352,7 +355,9 @@ knitr::kable(
 )
 ```
 
-Using the same draws throughout the fit produces a smooth curve for $\ell(\sigma)$ @fig-b2-crn, allowing the optimiser to follow it towards the maximum. In contrast, using fresh draws at each evaluation produces a jagged curve, as every point is affected by its own Monte Carlo error, which is approximately the MC SE at $R = 100$ (`r round(results$mean_mc_se[3], 2)`). In @tbl-b2-fits. `r sum(!is.na(b2_fits$error))` of the 5 fresh-draw fits failed,
+Using the same draws throughout the fit produces a smooth curve for $\ell(\sigma)$ @fig-b2-crn, allowing the optimiser to follow it towards the maximum. In contrast, using fresh draws at each evaluation produces a jagged curve, as every point is affected by its own Monte Carlo error, which is approximately the MC SE at $R = 100$ (`r round(results$mean_mc_se[3], 2)`).
+
+In @tbl-b2-fits, `r sum(!is.na(b2_fits$error[1:5]))` of the 5 fresh-draw fits failed with the error shown, while the fixed-draws fit converged with $\hat\sigma =$ `r round(b2_fits$sigma[6], 3)`.
 
 ## B3 - Cost {#sec-B3}
 
@@ -595,7 +600,7 @@ mt_long <- data.frame(
   ms = 1000 * c(mt$vectorised_seconds, mt$separate_seconds),
   finder = rep(c("Vectorised cluster_modes()", "Per-cluster optimize()"), each = nrow(mt))
 )
-mt_long
+
 
 ggplot(mt_long, aes(J, ms, colour = finder)) +
   geom_point() +
@@ -717,11 +722,12 @@ performance_table <- function(results, param) {
 #|   - "m = 5"
 #|   - "m = 20"
 #| echo: false
+#| tbl-pos: "h"
 
 tab <- performance_table(final, "beta1")
-for (cluster_size in c(2, 5, 20)) {
-  print(knitr::kable(tab[tab$m == cluster_size, names(tab)!="m"], row.names = FALSE, digits = 3))
-}
+knitr::kable(tab[tab$m == 2,  -1], row.names = FALSE, digits = 3)
+knitr::kable(tab[tab$m == 5,  -1], row.names = FALSE, digits = 3)
+knitr::kable(tab[tab$m == 20, -1], row.names = FALSE, digits = 3)
 ```
 
 ```{r}
@@ -732,11 +738,12 @@ for (cluster_size in c(2, 5, 20)) {
 #|   - "m = 5"
 #|   - "m = 20"
 #| echo: false
+#| tbl-pos: "h"
 
 tab <- performance_table(final, "sigma")
-for (cluster_size in c(2, 5, 20)) {
-  print(knitr::kable(tab[tab$m == cluster_size, names(tab)!="m"], row.names = FALSE, digits = 3))
-}
+knitr::kable(tab[tab$m == 2,  -1], row.names = FALSE, digits = 3)
+knitr::kable(tab[tab$m == 5,  -1], row.names = FALSE, digits = 3)
+knitr::kable(tab[tab$m == 20, -1], row.names = FALSE, digits = 3)
 ```
 
 ```{r}
@@ -778,7 +785,7 @@ We recommend `agh` ($K=7$) as the default. Across all six scenarios it was never
 
 **Small clusters, small** $\sigma$ ($m=2$, $\sigma=0.5$): coverage for $\sigma$ was about $0.88$ for `gh`, `agh` and `is`. Since these three agree closely, this most likely reflects the Wald interval for $\sigma$ performing poorly with little data per cluster, rather than integration error.
 
-**`is`** offered no advantage. Its estimates matched `agh`, but it was the slowest method ($2.52$s per fit at $m=20$; @fig-b3-loglik) because it evaluates $R$ draws per practice. Its $\ell$ is also biased downwards and jagged unless the same draws are reused (@sec-b2).
+**`is`** offered no advantage. Its estimates matched `agh`, but it was the slowest method ($2.52$s per fit at $m=20$; @fig-c3-time) because it evaluates $R$ draws per practice. Its $\ell$ is also biased downwards and jagged unless the same draws are reused (@sec-b2).
 
 # Part D
 
@@ -801,6 +808,7 @@ We start by examining the data
 #|   - "Attendance against age, with a logistic fit ignoring practice"
 #| layout-ncol: 2
 #| echo: false
+#| message: false
 
 prac <- aggregate(attended ~ practice, data = gp, FUN = function(x) c(rate = mean(x), n = length(x)))
 prac <- data.frame(practice = prac$practice, rate = prac$attended[, "rate"], n = prac$attended[, "n"])
@@ -862,7 +870,7 @@ or_age <- exp(b1)
 
 ```{r}
 #| label: tbl-d1
-#| tbl-cap: "Estimates (95% Wald CI) for attended ~ age with a random intercept for practice. CIs for σ are built on the log σ scale and back-transformed."
+#| tbl-cap: "Estimates (95% Wald CI) for attended ~ age with a random intercept for practice. CIs for $$\\sigma$$ are built on the log $\\sigma$ scale and back-transformed."
 #| echo: false
 
 fmt_ci <- function(est, lo, hi, d = 2) {
