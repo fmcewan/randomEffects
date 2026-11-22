@@ -1,6 +1,14 @@
 # negative_loglik
 negative_loglik <- function(theta, cd, lik_method,  K, draws) {
-  -marginal_loglik(theta, cd, lik_method, K, draws)
+  tryCatch(
+    -marginal_loglik(theta, cd, lik_method, K, draws),
+    error = function(e) {
+      if (grepl("Newton backtracking|did not converge|Non-finite derivatives|numerical range", conditionMessage(e))) {
+        return(Inf)
+      }
+      stop(e)
+    }
+  )  
 }
 
 #' Fit a random intercept logistic regression
@@ -26,7 +34,7 @@ negative_loglik <- function(theta, cd, lik_method,  K, draws) {
 #' @export 
 #' @examples
 #' data <- rint_sim(J = 50, m = 5, beta = c(-0.5, 1), sigma = 1)
-#' cd <- cluster_data(data$y, data$X, data$group)
+#' cd <- cluster_data(data$y, data$X, factor(data$group))
 #' fit_rint(cd, method = "laplace")
 fit_rint <- function(cd, method, K=NULL, draws=NULL, start=NULL) {
   
