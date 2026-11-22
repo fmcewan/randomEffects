@@ -773,19 +773,17 @@ ggplot(time_df, aes(m, mean, colour = method)) +
 
 These results follow from @sec-b1 and @sec-B3.
 
-Notice `gh()` doesn’t do very well for high cluster sizes. When cluster sizes increase, the function becomes more concentrated around its mode (which could no longer be centred at 0). Notice in @fig-b1 that `gh` reaches a final absolute error of `r signif(tail(errors_2$gh_error, 1), 3)` in the $m=2$ case, versus `r signif(tail(errors_20$gh_error, 1), 3)` in the $m=20$ case. Thus bigger cluster sizes negatively affect `gh` because it places its nodes according to the normal weighting function (centred around zero) i.e. it almost looks like a normal distribution with mean $0$.
+We recommend `agh` ($K=7$) as the default. Across all six scenarios it was never the worst method, its estimates matched the other accurate methods, and its cost is modest (@fig-c3-time). The alternatives are only acceptable in some settings. This is as `agh` also uses the mode and curvature like `gh`, but shifts and scales several quadrature points around each practice’s peak. It evaluates the actual integrand at those points and combines the values using corrected weights. It tends to captures more of the shape than `laplace` and `gh` but can be more expensive. Notice `agh` finds the lowest absolute error in @fig-b1 but also takes longer than the other two methods in @fig-b3-loglik.
 
-`laplace` instead approximates each practice’s integrand with a normal shape around its peak. `cluster_modes()` finds where that peak is and its curvature, which describes its width. Laplace then uses the peak’s height and width to approximate the integral. It is relatively cheap because it doesn’t evaluate lots of points @fig-b3-loglik , but can miss skewness or other departures from a normal shape. Notice how its absolute error remains constant in @fig-b1.
+**Small clusters, large** $\sigma$ ($m=2$, $\sigma=1.5$): **avoid `laplace`.** Its empirical SE was $1.39$ for $\beta_1$ (against $0.44$ to $0.59$ for the others) and $3.57$ for $\sigma$, and its $\beta_1$ interval under-covered ($0.934$). With only two binary observations, $h_j(u)$ is skewed and far from normal. `Laplace` approximates each practice’s integrand with a normal shape around its peak. `cluster_modes()` finds where that peak is and its curvature, which describes its width. Laplace then uses the peak’s height and width to approximate the integral. It is relatively cheap because it doesn’t evaluate lots of points @fig-b3-loglik , but can miss skewness or other departures from a normal shape, which we see here.
 
-`agh` also uses the mode and curvature, but shifts and scales several quadrature points around each practice’s peak. It evaluates the actual integrand at those points and combines the values using corrected weights. It tends to captures more of the shape than `laplace` and `gh` and `agh` finds the lowest absolute error in @fig-b1 but also takes longer than the other two methods in @fig-b3-loglik.
+**Large clusters, large** $\sigma$ ($m=20$, $\sigma=1.5$): **avoid `gh`**, whose coverage for $\sigma$ fell to $0.918$ while the others stayed at $0.945$. As $m$ grows, $h_j(u)$ concentrates around a mode away from zero, but `gh` places its nodes according to the normal weighting function (centred around zero) i.e. it almost looks like a normal distribution with mean $0$ so it struggles to capture this mode movement away from $0$. Notice in @fig-b1 that `gh` reaches a final absolute error of `r signif(tail(errors_2$gh_error, 1), 3)` in the $m=2$ case, versus `r signif(tail(errors_20$gh_error, 1), 3)` in the $m=20$ case.
 
-`is` estimates each $L_j$ by drawing $R$ values of $u$ from a $t_4$ proposal, centred at the practice's mode and scaled by its curvature (again from `cluster_modes()`). It then averages the ratio of the integrand to the proposal density over those draws. The heavier tails of the $t$ proposal keep the weights stable, and $\hat L_j$ is unbiased. However, taking logs makes $\ell$ biased downwards (see @sec-b2). and this bias only vanishes as $R$ grows. Its Monte Carlo noise also makes $\ell$ jagged unless the same draws are reused throughout @fig-b2-crn which is why the fresh-draw fits failed in @tbl-b2-fits. Because it evaluates $R$ draws per practice, it is the slowest method in @fig-b3-loglik.
+**Moderate clusters (**$m=5$): all four methods performed essentially identically, so the cheaper `laplace` or `gh` would also be acceptable.
 
-###Placeholder
+**Small** $\sigma$, small clusters ($m=2$, $\sigma=0.5$): coverage for $\sigma$ was about $0.88$ for `gh`, `agh` and `is`. Since these three agree closely, this most likely reflects the Wald interval for $\sigma$ performing poorly with little data per cluster, rather than integration error. `laplace`'s higher coverage here should not be read as a better likelihood approximation.
 
-Thus we recommend `agh` for all cluster sizes and amounts of between-cluster variation considered. It achieved the lowest error in @fig-b1 for both $m = 2$ and $m = 20$, at only a small cost over `laplace` @fig-b3-loglik. `laplace` is a reasonable faster alternative only for large clusters ($m = 20$), where each integrand is close to normal. It should be avoided for small clusters with large $\sigma$, where the integrand is skewed. `gh` is only adequate when both $m$ and $\sigma$ are small, so the integrand stays near zero. `is` offers no advantage: it is slower and its Monte Carlo noise must be controlled with fixed draws.
-
-Since there are a median of `r median(table(gp$practice))` patients per practice with `r length(unique(gp$practice))` practices. We are the closest to the $m=5$ case above and therefore use `agh` ($K=7$) with $m=5$ and $J=50$.
+**`is`** offered no advantage in any scenario. Its estimates matched `agh`, but it was the slowest method ($2.52$s per fit at $m=20$). This is as `is` estimates each $L_j$ by drawing $R$ values of $u$ from a $t_4$ proposal, centred at the practice's mode and scaled by its curvature (again from `cluster_modes()`). It then averages the ratio of the integrand to the proposal density over those draws. The heavier tails of the $t$ proposal keep the weights stable, and $\hat L_j$ is unbiased. However, taking logs makes $\ell$ biased downwards (see @sec-b2). and this bias only vanishes as $R$ grows. Its Monte Carlo noise also makes $\ell$ jagged unless the same draws are reused throughout @fig-b2-crn which is why the fresh-draw fits failed in @tbl-b2-fits. Because it evaluates $R$ draws per practice, it is the slowest method in @fig-b3-loglik.
 
 # Part D
 
@@ -797,7 +795,38 @@ Since there are a median of `r median(table(gp$practice))` patients per practice
 #data
 cd <- cluster_data(gp$attended, model.matrix(~ age, data = gp), factor(gp$practice))
 draws_is <- is_draws(cd, R = 100)
+rec <- "agh"
 ```
+
+We start by examining the data
+
+```{r}
+#| label: fig-d1-eda
+#| fig-cap: "Exploratory plots of the attendance data"
+#| fig-subcap:
+#|   - "Observed attendance rate by practice, sorted; point size is the number of patients"
+#|   - "Attendance against age, with a logistic fit ignoring practice"
+#| layout-ncol: 2
+#| echo: false
+
+prac <- aggregate(attended ~ practice, data = gp, FUN = function(x) c(rate = mean(x), n = length(x)))
+prac <- data.frame(practice = prac$practice, rate = prac$attended[, "rate"], n = prac$attended[, "n"])
+prac$rank <- rank(prac$rate, ties.method = "first")
+
+ggplot(prac, aes(rank, rate, size = n)) +
+  geom_point(alpha = 0.6) +
+  geom_hline(yintercept = mean(gp$attended), linetype = "dashed") +
+  labs(x = "Practice (sorted by attendance rate)", y = "Proportion attended", size = "Patients") +
+  theme_bw()
+
+ggplot(gp, aes(age, attended)) +
+  geom_jitter(height = 0.05, width = 0, alpha = 0.3) +
+  geom_smooth(method = "glm", method.args = list(family = binomial), se = FALSE, colour = "red") +
+  labs(x = "Age", y = "Attended") +
+  theme_bw()
+```
+
+Notice we are in a case where we have `r length(unique(gp$practice))` practices with between `r min(table(gp$practice))` and `r max(table(gp$practice))` patients each (median `r median(table(gp$practice))`), closest to the $m = 5$ scenario in Part C.
 
 ```{r}
 #| label: d1-fit
@@ -874,7 +903,11 @@ knitr::kable(
 
 ```
 
-See above in @tbl-d1, the estimates with 95% CI's. All agree except for `gh` on $\beta_0$ - which is likely the loss of accuracy mentioned in B1. On $\beta_1$ their CI's all agree and estimates differ only by 0.01 at most. Since age is on the log scale we exponentiate and find that a unit increase in age, multiples a patients odds of attending by $\approx 2.4 (1.77,3.25)$. For a patient of average age, the probability of attending a practice one SD above and below is shown in @tbl-SD-interp.
+All four methods give very similar estimates (@tbl-d1): `agh` and `is` agree to two decimal places, and `laplace` and `gh` differ by at most $0.02$ in $\beta_0$ and $\beta_1$. Within the confidence intervals, the only visible differences are in $\hat\sigma$, where `laplace` is lowest ($1.64$) and `gh` highest with the widest interval ($1.77$), consistent with the integration error seen in @sec-c3.
+
+Exponentiating $\hat\beta_1$ gives the odds ratio for age: a one-unit increase in age multiplies a patient's odds of attending by `r sprintf("%.2f", exp(fits$agh$par[2]))` (95% CI excludes 1), so we find age has a significant effect as expected from @fig-d1-eda-2
+
+The between-practice SD $\hat\sigma =$ `r round(exp(fits$agh$par[3]), 2)` is large on the log-odds scale, about twice the age effect, so which practice a patient attends matters substantially also as expected from @fig-d1-eda-1. @tbl-SD-interp shows the predicted attendance probability for a patient of average age at a practice one SD above and below average and we see they vary wildly.
 
 ```{r}
 #| label: tbl-SD-interp
@@ -900,13 +933,10 @@ knitr::kable(probs, row.names = FALSE, digits = 2,
 
 ## D2 - Do the practices matter?
 
-Notice in @tbl-D2-CV that our random intercept model beats the pooled regression model `glm`, with a CV of ####, SE#### on a 5 fold cross-validation test folding out random practices. It would be incorrect to fold out random patients instead of practices as patients are correlated through a shared practice effect - folding out random patients would lead to information leakage through their practice mates left behind. Making the CV scores over-optimistic particularly for the random-intercept model. Further we would lose independence in our held-out folds making our SE values wrong, and since our score $\sum log L_j$ is defined on practices, it needs patient practices together.
-
 ```{r}
 #| label: tbl-D2-CV
 #| tbl-cap: "Cross validation score along with mcse of our recommended method versus R's glm function - showing our method perform better"
 #| echo: false
-# Part D2
 rec = "agh"
 
 fitter<- function(train, test,method="glm",K=NULL,draws=NULL) { 
@@ -984,8 +1014,14 @@ d2_tab <- data.frame(
   row.names = NULL
 )
 
+
+
 knitr::kable(d2_tab, digits = 2, col.names = c("Model", "CV score", "SE"))
 ```
+
+Notice in @tbl-D2-CV that our random intercept model beats the pooled regression model `glm`, with a CV of `r d2_tab$cv[1]` (SE = `r d2_tab$SE[1]` ) against GLM's `r d2_tab$cv[2]` (SE = `r d2_tab$SE[2]`) where our held-out log-likelihood is the error measure on a 5 fold cross-validation test folding out random practices.
+
+It would be incorrect to fold out random patients instead of practices as patients are correlated through a shared practice effect - folding out random patients would lead to information leakage through their practice mates left behind. Making the CV scores over-optimistic particularly for the random-intercept model. Further we would lose independence in our held-out folds making our SE values wrong, and since our score $\sum log L_j$ is defined on practices, it needs patient practices together.
 
 # Appendix
 
