@@ -26,23 +26,35 @@ library(ggplot2)
 
 GenAI declaration, README and final render check - (D or E, to be agreed)
 
-# Part A  {#sec-A}
+# Part A {#sec-A}
 
-- `gauss_hermite(n)`:produces Gauss–Hermite nodes and weights for weight function e−x2, by the Golub–Welsch method.
+## List of functions
 
-- `gh(theta, cd, K)`: non-adaptive numerical integral based on Gauss-Hermite.
+In our package we have data functions:
+
+- `gauss_hermite(n)`:produces Gauss–Hermite nodes and weights for weight function $e^{x^2}$, by the Golub–Welsch method.
 
 - `cluster_integral(theta, cd, j)`: calculates the true marginal likelihood of a cluster
 
-- `cluster_data(y, X, group)`: prepares and validates the data before calculating the marginal log-likelihood
-
 - `rint_sim(J, m, beta, sigma)`: simulate data according to the model with one standard-normal covariate
 
-- `is_draws(cd, R, df)`: returns a fixed $J \times R$ matrix of standardised draws from a $t$-distribution with `df` degrees of freedom, with one row per cluster, generated once and reused at every $\theta$ (common random numbers) to ensure the IS likelihood is smooth enough for \`optim()\` to maximise.
+- `is_draws(cd, R, df)`: returns a fixed $J \times R$ matrix of standardised draws from a $t$-distribution with `df` degrees of freedom, with one row per cluster, generated once and reused at every $\theta$ (common random numbers).
 
-- `cluster_loglik(theta, cd, method = "is", draws)`: estimates each $\log L_j$ using importance sampling with a $t$ proposal centred at the cluster's mode and scaled by its curvature, as determined by `cluster_modes()` and returns each cluster's Monte Carlo SE in the \`mc_se\` attribute.
+- `cluster_data(y, X, group)`: prepares and validates the data before calculating the marginal log-likelihood
 
-# Table of tests  {#sec-tests}
+## Approximation functions:
+
+- `gh`: non-adaptive numerical integral based on Gauss-Hermite.
+
+- `laplace` approximates each practice’s integrand with a normal shape around its peak. `cluster_modes()` finds where that peak is and its curvature, which describes its width. Laplace then uses the peak’s height and width to approximate the integral.
+
+  - Note `cluster_modes` uses Newton’s method which is suitable here because each cluster’s log-integrand has a strictly negative second derivative, so will give a unique mode. A zero gradient, therefore, identifies that mode rather than a minimum or saddle point. Backtracking safeguards the updates by shortening steps that do not sufficiently improve the objective. 
+
+- `agh` also uses the mode and curvature, but shifts and scales several quadrature points around each practice’s peak. It evaluates the actual integrand at those points and combines the values using corrected weights.
+
+- `cluster_loglik(theta, cd, method = "is", draws)`: estimates each $\log L_j$ using importance sampling with a $t$ proposal centred at the cluster's mode and scaled by its curvature, as determined by `cluster_modes()` and returns each cluster's Monte Carlo SE in the `mc_se` attribute.
+
+# Table of tests {#sec-tests}
 
 ```{r}
 #| label: tbl-tests
@@ -71,7 +83,7 @@ Notice in @tbl-tests that all `r sum(tab$Checks)` pass as required.
 
 # Part B
 
-## B1 - How many nodes  {#sec-b1}
+## B1 - How many nodes {#sec-b1}
 
 ```{r}
 #| echo: false
@@ -169,7 +181,7 @@ Every additional observation $m$ adds another log-likelihood contribution to $h_
 
 Meaning `agh` reached a lower absolute error and converged faster in both cases. The final absolute errors (`agh`, `gh`, `laplace`) for $m=2$ are (`r signif(tail(errors_2$agh_error, 1), 3)`, `r signif(tail(errors_2$gh_error, 1), 3)`, `r signif(tail(errors_2$laplace_error, 1), 3)`), and for $m=20$ they are (`r signif(tail(errors_20$agh_error, 1), 3)`, `r signif(tail(errors_20$gh_error, 1), 3)`, `r signif(tail(errors_20$laplace_error, 1), 3)`).
 
-## B2 - Importance Sampling  {#sec-b2}
+## B2 - Importance Sampling {#sec-b2}
 
 ```{r}
 #| label: b2-run
@@ -355,7 +367,7 @@ The reason fresh draws cause the optimiser to fail is that BFGS estimates the gr
 
 This demonstrates why `fit_rint()` uses a single fixed set of draws throughout the fit (common random numbers): doing so ensures that $\ell(\theta)$ is a smooth, deterministic function that `optim()` can reliably maximise.
 
-## B3 - Cost  {#sec-B3}
+## B3 - Cost {#sec-B3}
 
 We now show the evaluation cost of the respective methods.
 
@@ -553,50 +565,67 @@ b3 <- run_b3_cost()
 ```
 
 ```{r}
-#| label: tbl-b3-loglik
-#| tbl-cap: "Median time (ms) for one evaluation of the log-likelihood, m = 5"
+#| label: fig-b3-loglik
+#| fig-cap: "Median time (ms) for one evaluation of the log-likelihood (m = 5), with bars showing the min and max over 3 timing rounds"
 #| echo: false
-
+#| fig-width: 6
+#| fig-height: 3.5
 
 lt <- b3$likelihood_timings
-wide <- reshape(
-  lt[, c("J", "method", "median_seconds")],
-  idvar = "J", timevar = "method", direction = "wide"
-)
+lt$method <- factor(lt$method, levels = c("laplace", "gh", "agh", "is"),
+                    labels = c("Laplace", "GH (K=10)", "AGH (K=7)", "IS (R=100)"))
 
-wide <- wide[, c("J", paste0("median_seconds.", c("laplace", "gh", "agh", "is")))]
-wide[, -1] <- wide[, -1] * 1000   # seconds -> ms
-knitr::kable(
-  wide, row.names = FALSE,
-  col.names = c("J", "Laplace", "GH (K=10)", "AGH (K=7)", "IS (R=100)"),
-  digits = 2
-)
+ggplot(lt, aes(J, median_seconds * 1000, colour = method)) +
+  geom_point() +
+  geom_line() +
+  geom_errorbar(aes(ymin = min_seconds * 1000, ymax = max_seconds * 1000), width = 0.05) +
+  scale_x_log10(breaks = c(50, 200, 800)) +
+  scale_y_log10() +
+  scale_colour_manual(values = c("Laplace" = "blue", "GH (K=10)" = "green",
+                                 "AGH (K=7)" = "red", "IS (R=100)" = "purple")) +
+  labs(x = "Number of clusters, J (log scale)", y = "Time per evaluation (ms, log scale)",
+       colour = "Method") +
+  theme_bw()
+
+# kept for the inline value in the text below
+wide <- reshape(lt[, c("J", "method", "median_seconds")],
+                idvar = "J", timevar = "method", direction = "wide")
 
 
 
 ```
 
 ```{r}
-#| label: tbl-b3-modes
-#| tbl-cap: "Vectorised cluster_modes() vs one optimize() call per cluster"
+#| label: fig-b3-modes
+#| fig-cap: "Time to find all cluster modes: vectorised cluster_modes() vs one optimize() call per cluster"
 #| echo: false
-
+#| fig-width: 6
+#| fig-height: 3.5
 
 mt <- b3$mode_timings
-knitr::kable(
-  mt[, c("J", "vectorised_seconds", "separate_seconds", "speed_up")],
-  col.names = c("J", "Vectorised (s)", "Per-cluster optimize() (s)", "Speed-up"),
-  digits = c(0, 5, 5, 1)
+mt_long <- data.frame(
+  J = rep(mt$J, 2),
+  ms = 1000 * c(mt$vectorised_seconds, mt$separate_seconds),
+  finder = rep(c("Vectorised cluster_modes()", "Per-cluster optimize()"), each = nrow(mt))
 )
+
+ggplot(mt_long, aes(J, ms, colour = finder)) +
+  geom_point() +
+  geom_line() +
+  scale_x_log10(breaks = c(50, 200, 800)) +
+  scale_y_log10() +
+  labs(x = "Number of clusters, J (log scale)", y = "Time (ms, log scale)",
+       colour = NULL) +
+  theme_bw() + theme(legend.position = "bottom")
 ```
 
-From the perspective of both cost and accuracy we would use `agh`. Its cost is dominated by the vectorised mode search, which it shares with `laplace`, so it is only slightly slower than `gh` (the quickest method in all cases) per evaluation. In the $J=50$ case the difference is `r abs(wide$median_seconds.agh - wide$median_seconds.gh)[1]` @tbl-b3-loglik, yet @fig-b1 showed it is more accurate, especially for larger clusters.
+From the perspective of both cost and accuracy we would use `agh`. Its cost is dominated by the vectorised mode search, which it shares with `laplace`, so it is only slightly slower than `gh` (the quickest method in all cases) per evaluation. In the $J=50$ case the difference is `r abs(wide$median_seconds.agh - wide$median_seconds.gh)[1]` @fig-b3-loglik, yet @fig-b1 showed it is more accurate, especially for larger clusters.
 
 `laplace` is fastest but its error does not shrink, and that bias would carry into the fitted parameters. `gh` is cheap but inaccurate when the integrand is concentrated away from zero @fig-b1. `is` is slowest, scaling with $R$ draws per cluster, and its Monte Carlo noise makes `ℓ` rough, which hampers the optimiser unless the draws are held fixed as seen in @fig-b2-crn.
 
 # Part C
 
-## C1 - Design  {#sec-c1}
+## C1 - Design {#sec-c1}
 
 **Aims:** Compare the four methods as ways of fitting the model by analysing the performance measures detailed below.
 
@@ -610,31 +639,31 @@ From the perspective of both cost and accuracy we would use `agh`. Its cost is d
 
 Failed fits: a fit fails if `optim` returns a non-zero convergence code, an error is thrown or the standard errors cannot be computed. Failures are counted per method and scenario and excluded from the other measures. Reporting the failure rate matters because excluding them could make an unreliable method appear better than it is.
 
-## C2 - Number of replicates  {#sec-c2}
+## C2 - Number of replicates {#sec-c2}
 
 ```{r}
 
 ```
 
-## C3 - Results  {#sec-c3}
+## C3 - Results {#sec-c3}
 
 ```{r}
 
 ```
 
-## C4 - Recommendations  {#sec-c4}
+## C4 - Recommendations {#sec-c4}
 
 These results follow from @sec-b1 and @sec-B3. Notice `gh()` doesn’t do very well for high cluster sizes. When cluster sizes increase, the function becomes more concentrated around its mode (which could no longer be centred at 0). Notice in @fig-b1 that `gh` reaches a final absolute error of `r signif(tail(errors_2$gh_error, 1), 3)` in the $m=2$ case, versus `r signif(tail(errors_20$gh_error, 1), 3)` in the $m=20$ case. Thus bigger cluster sizes negatively affect `gh` because it places its nodes according to the normal weighting function (centred around zero) i.e. it almost looks like a normal distribution with mean 0.
 
-`laplace` instead approximates each practice’s integrand with a normal shape around its peak. `cluster_modes()` finds where that peak is and its curvature, which describes its width. Laplace then uses the peak’s height and width to approximate the integral. It is relatively cheap because it doesn’t evaluate lots of points @tbl-b3-loglik , but can miss skewness or other departures from a normal shape. Notice how its absolute error remains constant in @fig-b1.
+`laplace` instead approximates each practice’s integrand with a normal shape around its peak. `cluster_modes()` finds where that peak is and its curvature, which describes its width. Laplace then uses the peak’s height and width to approximate the integral. It is relatively cheap because it doesn’t evaluate lots of points @fig-b3-loglik , but can miss skewness or other departures from a normal shape. Notice how its absolute error remains constant in @fig-b1.
 
-`agh` also uses the mode and curvature, but shifts and scales several quadrature points around each practice’s peak. It evaluates the actual integrand at those points and combines the values using corrected weights. It tends to captures more of the shape than `laplace` and `gh` and finds the lowest absolute error in @fig-b1 but also takes longer than the other two methods in @tbl-b3-loglik.
+`agh` also uses the mode and curvature, but shifts and scales several quadrature points around each practice’s peak. It evaluates the actual integrand at those points and combines the values using corrected weights. It tends to captures more of the shape than `laplace` and `gh` and finds the lowest absolute error in @fig-b1 but also takes longer than the other two methods in @fig-b3-loglik.
 
-`is` estimates each $L_j$ by drawing $R$ values of $u$ from a $t_4$ proposal, centred at the practice's mode and scaled by its curvature (again from `cluster_modes()`). It then averages the ratio of the integrand to the proposal density over those draws. The heavier tails of the $t$ proposal keep the weights stable, and $\hat L_j$ is unbiased. However, taking logs makes $\ell$ biased downwards (see @sec-b2). and this bias only vanishes as $R$ grows. Its Monte Carlo noise also makes $\ell$ jagged unless the same draws are reused throughout @fig-b2-crn which is why the fresh-draw fits failed in @tbl-b2-fits. Because it evaluates $R$ draws per practice, it is the slowest method in @tbl-b3-loglik.
+`is` estimates each $L_j$ by drawing $R$ values of $u$ from a $t_4$ proposal, centred at the practice's mode and scaled by its curvature (again from `cluster_modes()`). It then averages the ratio of the integrand to the proposal density over those draws. The heavier tails of the $t$ proposal keep the weights stable, and $\hat L_j$ is unbiased. However, taking logs makes $\ell$ biased downwards (see @sec-b2). and this bias only vanishes as $R$ grows. Its Monte Carlo noise also makes $\ell$ jagged unless the same draws are reused throughout @fig-b2-crn which is why the fresh-draw fits failed in @tbl-b2-fits. Because it evaluates $R$ draws per practice, it is the slowest method in @fig-b3-loglik.
 
 ###Placeholder
 
-Thus we recommend `agh` for all cluster sizes and amounts of between-cluster variation considered. It achieved the lowest error in @fig-b1 for both $m = 2$ and $m = 20$, at only a small cost over `laplace` @tbl-b3-loglik. `laplace` is a reasonable faster alternative only for large clusters ($m = 20$), where each integrand is close to normal. It should be avoided for small clusters with large $\sigma$, where the integrand is skewed. `gh` is only adequate when both $m$ and $\sigma$ are small, so the integrand stays near zero. `is` offers no advantage: it is slower and its Monte Carlo noise must be controlled with fixed draws.
+Thus we recommend `agh` for all cluster sizes and amounts of between-cluster variation considered. It achieved the lowest error in @fig-b1 for both $m = 2$ and $m = 20$, at only a small cost over `laplace` @fig-b3-loglik. `laplace` is a reasonable faster alternative only for large clusters ($m = 20$), where each integrand is close to normal. It should be avoided for small clusters with large $\sigma$, where the integrand is skewed. `gh` is only adequate when both $m$ and $\sigma$ are small, so the integrand stays near zero. `is` offers no advantage: it is slower and its Monte Carlo noise must be controlled with fixed draws.
 
 Since there are a median of `r median(table(gp$practice))` patients per practice with `r length(unique(gp$practice))` practices. We are the closest to the $m=5$ case above and therefore use `agh` ($K=7$) with $m=5$ and $J=50$.
 
