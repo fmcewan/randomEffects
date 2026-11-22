@@ -4,7 +4,10 @@ format:
   pdf:
     code-overflow: wrap
     number-sections: true
-    latex-auto-install: false
+    fig-pos: "H"
+    tbl-pos: "H"
+    
+    
 execute:
   echo: false
 ---
@@ -722,7 +725,7 @@ performance_table <- function(results, param) {
 #|   - "m = 5"
 #|   - "m = 20"
 #| echo: false
-#| tbl-pos: "h"
+#| tbl-pos: "H"
 
 tab <- performance_table(final, "beta1")
 knitr::kable(tab[tab$m == 2,  -1], row.names = FALSE, digits = 3)
@@ -738,7 +741,7 @@ knitr::kable(tab[tab$m == 20, -1], row.names = FALSE, digits = 3)
 #|   - "m = 5"
 #|   - "m = 20"
 #| echo: false
-#| tbl-pos: "h"
+#| tbl-pos: "H"
 
 tab <- performance_table(final, "sigma")
 knitr::kable(tab[tab$m == 2,  -1], row.names = FALSE, digits = 3)
@@ -870,7 +873,7 @@ or_age <- exp(b1)
 
 ```{r}
 #| label: tbl-d1
-#| tbl-cap: "Estimates (95% Wald CI) for attended ~ age with a random intercept for practice. CIs for $$\\sigma$$ are built on the log $\\sigma$ scale and back-transformed."
+#| tbl-cap: "Estimates (95% Wald CI) for attended ~ age with a random intercept for practice. CIs for $\\sigma$ are built on the log $\\sigma$ scale and back-transformed."
 #| echo: false
 
 fmt_ci <- function(est, lo, hi, d = 2) {
