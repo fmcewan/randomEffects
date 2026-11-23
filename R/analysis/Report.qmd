@@ -12,10 +12,9 @@ execute:
   echo: false
 ---
 
+# Data loading chunk
+
 ```{r}
-#| include: false
-set.seed(4113)
-library(here)
 group <- 5
 source(here("raw_data", "group_data.R"))
 gp <- group_data(group)
@@ -24,8 +23,11 @@ gp <- group_data(group)
 ```{r}
 #| label: setup
 #| include: false
+
+set.seed(4113)
 devtools::load_all(here::here())
 
+library(here)
 library(ggplot2)
 ```
 
