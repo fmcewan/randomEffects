@@ -47,7 +47,7 @@ In our package we have data functions:
 
 - `cluster_integral(theta, cd, j)`: calculates the true marginal likelihood of a cluster
 
-- `rint_sim(J, m, beta, log(sigma))`: simulate data according to the model with one standard-normal covariate
+- `rint_sim(J, m, beta, sigma)`: simulate data according to the model with one standard-normal covariate
 
 - `is_draws(cd, R, df)`: returns a fixed $J \times R$ matrix of standardised draws from a $t$-distribution with `df` degrees of freedom, with one row per cluster, generated once and reused at every $\theta$ (common random numbers).
 
@@ -1114,7 +1114,7 @@ Leaving out random patients would be incorrect. Patients share a practice effect
 
 ```{r}
 #| include: false
-tab_columns <- c("method", "bias", "bias_mcse", "emp_se", "coverage", "coverage_mcse")
+tab_columns <- c("method", "bias", "bias_mcse", "emp_se","emp_se_mcse", "coverage", "coverage_mcse")
 
 performance_table <- function(results, param) {
   
