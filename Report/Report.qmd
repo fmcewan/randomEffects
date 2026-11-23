@@ -1,0 +1,1153 @@
+---
+title: "Report"
+format:
+  pdf:
+    code-overflow: wrap
+    number-sections: true
+    fig-pos: "H"
+    tbl-pos: "H"
+    
+    
+execute:
+  echo: false
+---
+
+```{r}
+#| include: false
+set.seed(4113)
+library(here)
+group <- 5
+source(here("raw_data", "group_data.R"))
+gp <- group_data(group)
+```
+
+```{r}
+#| label: setup
+#| include: false
+devtools::load_all(here::here())
+
+library(ggplot2)
+```
+
+# GenAI declaration
+
+We declare that parts of this submission incorporate contributions from GenAI software and that the use of GenAI aligns with acceptable use as outlined in University policy and in the module and assignment guidance and is consistent with good academic practice. The tools used were Claude AI, Chagpt, Copilot by separate members.
+
+# Part A {#sec-A}
+
+## List of functions
+
+In our package we have data functions:
+
+- `gauss_hermite(n)`:produces Gauss–Hermite nodes and weights for weight function $e^{-x^2}$, by the Golub–Welsch method.
+
+- `cluster_integral(theta, cd, j)`: calculates the true marginal likelihood of a cluster
+
+- `rint_sim(J, m, beta, log(sigma))`: simulate data according to the model with one standard-normal covariate
+
+- `is_draws(cd, R, df)`: returns a fixed $J \times R$ matrix of standardised draws from a $t$-distribution with `df` degrees of freedom, with one row per cluster, generated once and reused at every $\theta$ (common random numbers).
+
+- `cluster_data(y, X, group)`: prepares and validates the data before calculating the marginal log-likelihood
+
+- `cluster_modes()` finds where `laplace` 's peak is and its curvature, which describes its width.
+
+  - Note `cluster_modes` uses Newton’s method which is suitable here because each cluster’s log-integrand has a strictly negative second derivative, so will give a unique mode. A zero gradient, therefore, identifies that mode rather than a minimum or saddle point. Backtracking safeguards the updates by shortening steps that do not sufficiently improve the objective. 
+
+## Approximation functions:
+
+- `gh`: non-adaptive numerical integral based on Gauss-Hermite.
+
+- `laplace` approximates each practice’s integrand with a normal shape around its peak. `laplace` then uses the peak’s height and width to approximate the integral.
+
+- `agh` also uses the mode and curvature, but shifts and scales several quadrature points around each practice’s peak. It evaluates the actual integrand at those points and combines the values using corrected weights.
+
+- `cluster_loglik(theta, cd, method = "is", draws)`: estimates each $\log L_j$ using importance sampling with a $t$ proposal centred at the cluster's mode and scaled by its curvature, as determined by `cluster_modes()` and returns each cluster's Monte Carlo SE in the `mc_se` attribute.
+
+# Table of tests {#sec-tests}
+
+```{r}
+#| label: tbl-tests
+#| tbl-cap: "Table of all tests in package passing without failures"  
+#| echo: false
+#| message: false
+
+res <- devtools::test(reporter = "silent")
+df  <- as.data.frame(res)
+df$file <- sub("^test-", "", sub("\\.R$", "", df$file))
+
+tab <- do.call(rbind, lapply(split(df, df$file), function(d) data.frame(
+  File    = d$file[1],
+  Tests   = nrow(d),
+  Checks  = sum(d$nb),
+  Failed  = sum(d$failed),
+  Skipped = sum(d$skipped),
+  Errors  = sum(d$error)
+)))
+tab <- rbind(tab, data.frame(File = "Total", t(colSums(tab[, -1]))))
+rownames(tab) <- NULL
+
+knitr::kable(tab, booktabs = TRUE, align = "lrrrrr")
+```
+
+Notice in @tbl-tests that all `r tab$Checks[tab$File == "Total"]` pass as pass as required.
+
+# Part B
+
+## B1 - How many nodes {#sec-b1}
+
+```{r}
+#| echo: false
+# Simulation settings
+beta <- c(-0.5,1)
+sigma <- 1.5
+theta <- c(beta, log(sigma))
+
+```
+
+```{r}
+#| label: fig-b1
+#| echo: false
+#| fig-cap: "Log integration error against number of nodes showing ranking agh>gh>laplace"
+#| fig-subcap:
+#|   - "m = 20"
+#|   - "m = 2"
+#| layout-ncol: 2
+
+K <- 1:30 #let K vary from 1 to 30
+
+# Generate datasets
+sim_data_20 <- rint_sim(50, 20, beta, log(1.5))
+sim_data_2 <- rint_sim(50, 2, beta, log(1.5))
+
+calculate_errors <- function(sim_data, theta, K) {
+  
+  # Use adaptive Gauss-Hermite with 50 nodes as the reference
+  agh_50 <- marginal_loglik(theta, sim_data, "agh", K = 50)
+  
+  # Calculate both errors for every value of K
+  integration_errors <- vapply(
+    K,
+    function(k) {
+      c(
+        gh_error = abs(marginal_loglik(theta, sim_data, "gh", k) - agh_50),
+        agh_error = abs(marginal_loglik(theta, sim_data, "agh", k) - agh_50)
+      )
+    },
+    numeric(2)
+  )
+  
+  # Calculate Laplace error once, since it does not depend on K
+  laplace_error <- abs(
+    marginal_loglik(theta, sim_data, "laplace") - agh_50
+  )
+  
+  # Combine everything into a data frame
+  data.frame(
+    K = K,
+    gh_error = integration_errors["gh_error", ],
+    agh_error = integration_errors["agh_error", ],
+    laplace_error = rep(laplace_error, length(K))
+  )
+}
+
+plot_errors <- function(errors, m) {
+  
+  ggplot(errors, aes(x = K)) +
+    geom_path(aes(y = gh_error, colour = "Gauss-Hermite")) +
+    geom_path(aes(y = agh_error, colour = "Adaptive Gauss-Hermite")) +
+    geom_path(aes(y = laplace_error, colour = "Laplace")) +
+    scale_colour_manual(
+      values = c(
+        "Gauss-Hermite" = "green",
+        "Adaptive Gauss-Hermite" = "red",
+        "Laplace" = "blue"
+      )
+    ) +
+    scale_y_log10() +
+    labs(
+      x = "Number of integration nodes (K)",
+      y = "Absolute error",
+      colour = "Method"
+    ) 
+}
+
+
+# Calculate errors
+errors_20 <- calculate_errors(sim_data_20, theta, K)
+errors_2 <- calculate_errors(sim_data_2, theta, K)
+
+# Generate plots
+p20 <- plot_errors(errors_20, 20)
+p2 <- plot_errors(errors_2, 2)
+
+# Display both plots
+print(p20)
+print(p2)
+```
+
+In @fig-b1-1 `Gauss-Hermite (gh)` and `Adaptive Gauss-Hermite (agh)` error's generally decrease as the number of integration nodes $K$ increases. `laplace` does not use integration nodes, but rather the mode and curvature so its error does not change for different values of $K$.
+
+Every additional observation $m$ adds another log-likelihood contribution to $h_j(u)$ concentrating the function around its mode. This negatively impacts the accuracy of `gh`, which places its nodes according to the normal weighting function (centered at zero). Its errors are lower for $m=2$ in @fig-b1-2 than in the $m=20$ case @fig-b1-1. `agh` , by contrast, is able to adjust the location and scale of its nodes to the integrand, using its mode and local curvature. `laplace` performed poorly overall, as it uses a Gaussian approximation - failing to capture skewness.
+
+## B2 - Importance Sampling {#sec-b2}
+
+### Bias
+
+```{r}
+#| label: b2-run
+#| include: false
+#| cache: true
+
+cd20 <- cluster_data(sim_data_20$y, sim_data_20$X, factor(sim_data_20$group)) #this runs on B1 dataset
+
+truth <- marginal_loglik(theta, cd20, method = "agh", K = 50)
+
+Rs <- c(10, 30, 100, 300, 1000)
+n_rep <- 200
+
+one_run <- function(R) {
+  est <- importance_sampling(theta, cd20, is_draws(cd20, R = R))
+  c(ell = sum(est), mc_se = sqrt(sum(attr(est, "mc_se")^2)))
+}
+
+results <- do.call(rbind, lapply(Rs, function(R) {
+  reps <- t(replicate(n_rep, one_run(R)))
+  data.frame(
+    R = R,
+    bias = mean(reps[, "ell"]) - truth,
+    bias_mcse = sd(reps[, "ell"]) / sqrt(n_rep),
+    sd = sd(reps[, "ell"]),
+    mean_mc_se = mean(reps[, "mc_se"]),
+    predicted = -0.5 * mean(reps[, "mc_se"]^2)
+  )
+}))
+
+spread <- data.frame(
+  R = rep(results$R, 2),
+  value = c(results$sd, results$mean_mc_se),
+  measure = rep(c("SD across 200 repetitions", "Mean reported MC SE"),
+                each = nrow(results))
+)
+
+sigma_grid <- seq(1, 2, length.out = 60)
+Z_fixed <- is_draws(cd20, R = 100)
+profile_df <- data.frame(
+  sigma = rep(sigma_grid, 2),
+  ell = c(
+    sapply(sigma_grid, function(s)
+      sum(importance_sampling(c(beta, log(s)), cd20, Z_fixed))),
+    sapply(sigma_grid, function(s)
+      sum(importance_sampling(c(beta, log(s)), cd20, is_draws(cd20, R = 100))))
+  ),
+  draws = rep(c("Same draws", "Fresh draws each evaluation"),
+              each = length(sigma_grid))
+)
+
+```
+
+```{r}
+#| label: fig-b2
+#| fig-cap: "Importance sampling estimate of the log-likelihood ($m = 20$, 200 repetitions per $R$)"
+#| fig-subcap:
+#|   - "Bias, with $\\pm 2$ Monte Carlo SE bars; dashed line is the Jensen prediction $-\\mathrm{SE}^2/2$"
+  #|   - "SD across repetitions vs the package's mean reported MC SE"
+#| layout-ncol: 2
+#| echo: false
+
+ggplot(results, aes(R, bias)) +
+  geom_hline(yintercept = 0, colour = "grey60") +
+  geom_pointrange(aes(ymin = bias - 2 * bias_mcse, ymax = bias + 2 * bias_mcse)) +
+  geom_line(aes(y = predicted), linetype = "dashed", colour = "steelblue") +
+  scale_x_log10(breaks = Rs) +
+  labs(x = "Draws per cluster, R (log scale)", y = "Bias of IS log-likelihood") +
+  theme_bw()
+
+ggplot(spread, aes(R, value, colour = measure)) +
+  geom_point() + geom_line() +
+  scale_x_log10(breaks = Rs) + scale_y_log10() +
+  labs(x = "Draws per cluster, R (log scale)", y = "SD (log scale)", colour = NULL) +
+  theme_bw() + theme(legend.position = "bottom")
+
+
+```
+
+In @fig-b2-1 the bias of `is` shrinks as $R$ increases, reaching $0$ by $R=1000$. The SD across $200$ repetitions agrees with the package's reported MCSE to within `r round(100 * max(abs(results$sd / results$mean_mc_se - 1)))`% at every $R$ (@fig-b2-2).
+
+Since each $\hat L_j$ is unbiased and $\log$ is concave, Jensen's inequality gives
+
+$$ \mathbb{E}[\log \hat L_j] \le \log L_j, \qquad \text{bias} \approx -\frac{\mathrm{SE}_j^2}{2}, $$
+
+by a second-order Taylor expansion. Summed over clusters, this is the dashed line in @fig-b2-1. As $\mathrm{SE}_j^2 \propto 1/R$, the bias shrinks like $1/R$, faster than the SD ($1/\sqrt{R}$). It is clear at $R=10$ (`r round(results$bias[1], 3)`, MCSE `r round(results$bias_mcse[1], 3)`) but undetectable by $R=100$, where the predicted bias is smaller than its MCSE.
+
+### Fresh draws
+
+We now show why draws need to stay fixed for `is`. As otherwise the optimiser's BFGS estimates the gradient using finite differences in $\ell$ at nearby values of $\theta$. When fresh draws are used, these differences are dominated by Monte Carlo noise rather than genuine changes in $\ell$, making the estimated gradient unreliable. Consequently, the optimiser takes large steps in random directions and may move towards extreme values of $\theta$, where `cluster_modes()` is unable to find the modes, leading to the observed error.
+
+```{r}
+#| label: fig-b2-crn
+#| fig-cap: "IS log-likelihood (R = 100) as $\\sigma$ varies with $\\beta$ fixed at the truth: reusing the same draws gives a smooth curve, fresh draws at each evaluation give a jagged one"
+#| echo: false
+#| fig-width: 6
+#| fig-height: 3.5
+
+ggplot(profile_df, aes(sigma, ell, colour = draws)) +
+  geom_line() +
+  labs(x = expression(sigma), y = "IS log-likelihood", colour = NULL) +
+  theme_bw() + theme(legend.position = "bottom")
+```
+
+```{r}
+#| label: b2-fits-run
+#| include: false
+#| cache: true
+#| dependson: b2-run
+
+
+# Starting values as in fit_rint(): pooled logistic regression, log sigma = 0
+start <- c(unname(coef(glm(cd20$y ~ cd20$X - 1, family = binomial))), 0)
+
+# Incorrect: new draws every time the optimiser evaluates the likelihood
+nll_fresh <- function(theta) {
+  -sum(importance_sampling(theta, cd20, is_draws(cd20, R = 100)))
+}
+
+# AI assisted: returns a data frame per fit and records conditionMessage(e)
+# so the reason each fresh-draws fit failed is kept
+fresh_fits <- do.call(rbind, lapply(1:5, function(k) {
+  tryCatch({
+    o <- optim(start, nll_fresh, method = "BFGS")
+    se <- tryCatch(sqrt(diag(solve(numDeriv::hessian(nll_fresh, o$par)))),
+                   error = function(e) rep(NA, 3))
+    data.frame(fit = paste("Fresh", k), beta0 = o$par[1], beta1 = o$par[2],
+               sigma = exp(o$par[3]), convergence = o$convergence,
+               evals = unname(o$counts["function"]),
+               se_beta1 = se[2], se_logsigma = se[3], error = NA)
+  }, error = function(e) {
+    data.frame(fit = paste("Fresh", k), beta0 = NA, beta1 = NA, sigma = NA,
+               convergence = NA, evals = NA, se_beta1 = NA, se_logsigma = NA,
+               error = conditionMessage(e))
+  })
+}))
+
+fixed_fit <- fit_rint(cd20, method = "is", draws = is_draws(cd20, R = 100))
+
+fixed_row <- data.frame(fit = "Fixed draws", beta0 = fixed_fit$par[1],
+                        beta1 = fixed_fit$par[2], sigma = exp(fixed_fit$par[3]),
+                        convergence = fixed_fit$convergence, evals = NA,
+                        se_beta1 = fixed_fit$se[2], se_logsigma = fixed_fit$se[3],
+                        error = NA)
+
+b2_fits <- rbind(fresh_fits, fixed_row)
+b2_fits_subset<-b2_fits[, c("fit", "error")]
+```
+
+```{r}
+#| label: tbl-b2-fits
+#| tbl-cap: "Five IS fits (R = 100) drawing fresh draws at every likelihood evaluation, compared with one fit using fixed draws. True values: $\\beta_0 = -0.5$, $\\beta_1 = 1$, $\\sigma = 1.5$. Convergence code 0 = converged."
+#| echo: false
+
+tab <- b2_fits_subset
+if (all(is.na(tab$error))) tab$error <- NULL   # drop error column if nothing failed
+tab$error[is.na(tab$error)] <- "Converged"
+
+knitr::kable(
+  tab, row.names = FALSE, digits = 3,
+  col.names = c("Fit",
+                if (!is.null(tab$error)) "Error"),
+  escape = FALSE
+)
+```
+
+Using the same draws throughout the fit produces a smooth curve for $\ell(\sigma)$ @fig-b2-crn, allowing the optimiser to follow it towards the maximum. In contrast, using fresh draws at each evaluation produces a jagged curve, as every point is affected by its own Monte Carlo error, which is approximately the MC SE at $R = 100$ (`r round(results$mean_mc_se[3], 2)`).
+
+In @tbl-b2-fits, `r sum(!is.na(b2_fits$error[1:5]))` of the 5 fresh-draw fits failed with the error shown, while the fixed-draws fit converged with $\hat\sigma =$ `r round(b2_fits$sigma[6], 3)`.
+
+## B3 - Cost {#sec-B3}
+
+We now show the evaluation cost of the respective methods.
+
+```{r}
+#| echo: false
+
+# Default settings (to be able to pass this as one variable later)
+b3_settings <- list(
+  cluster_counts = c(50, 200, 800),
+  m = 5,                          # Patients per practice
+  beta = beta, sigma = sigma, # Theta
+  K_gh = 10, K_agh = 7,           # Nodes
+  R_is = 100, df_is = 4,          # For importance sampling
+  min_seconds = 0.2,              # For stable timings
+  rounds = 3                      # Num rounds to be timed
+)
+
+# Timed evaluations with system.time()
+b3_time_evaluation <- function(f, settings = b3_settings) {
+  min_seconds <- settings$min_seconds
+  rounds <- settings$rounds
+  
+  invisible(f())    # Checking the call once without returning or timing
+  repetitions <- 1  # Starting with 1 call
+  # Defining helper to measure elapsed time
+  measure_elapsed <- function(n) {
+    system.time({
+      for (i in seq_len(n)) {
+        invisible(f())
+      }
+    })[["elapsed"]]
+  }
+  
+  # Repeating until proper batch size is found, then timing whole batch
+  repeat {
+    elapsed <- measure_elapsed(repetitions)
+    if (elapsed >= min_seconds) {
+      break # break if long enough
+    }
+    repetitions <- repetitions * 2 # Otherwise increase num of calls and retry
+  }
+  
+  # And repeating batches to show the variability in the timings
+  seconds_per_call <- numeric(rounds)
+  for (r in seq_len(rounds)) {
+    elapsed <- measure_elapsed(repetitions)
+    seconds_per_call[r] <- elapsed / repetitions # Finding time per repetition
+  }
+  
+  # Individual batch timings and summaries
+  list(
+    median_seconds = median(seconds_per_call),
+    min_seconds = min(seconds_per_call),
+    max_seconds = max(seconds_per_call),
+    calls_per_batch = repetitions,
+    seconds_per_call = seconds_per_call
+  )
+}
+
+# Calling optimize() separately for every practice (just for timing purposes)
+b3_separate_modes <- function(theta, cd) {
+  
+  beta <- theta[seq_len(ncol(cd$X))];  sigma <- exp(theta[length(theta)])
+  eta_fixed <- drop(cd$X %*% beta)
+  u_hat <- H <- numeric(cd$J) # Both 0 vectors of len J
+  
+  softplus <- function(z) {
+    pmax(z, 0) + log1p(exp(-abs(z)))
+  }
+  
+  for (j in seq_len(cd$J)) {
+    
+    patients <- cd$group == j
+    y_j <- cd$y[patients]
+    eta_j <- eta_fixed[patients]
+    
+    h_j <- function(u) {
+      eta <- eta_j + u
+      log_prob <- ifelse(y_j == 1, -softplus(-eta), -softplus(eta))
+      sum(log_prob) + dnorm(u, mean = 0, sd = sigma, log = TRUE)
+    }
+    
+    # Bound to find modes based on the derivative equation (+ margin of 1)
+    bound <- length(y_j) * sigma^2 + 1
+    opt <- optimize(h_j, interval = c(-bound, bound),
+                    maximum = TRUE, tol = 1e-8)
+    u_hat[j] <- opt$maximum
+    
+    # Using analytic curvature to reduce calculations
+    eta <- eta_j + u_hat[j]
+    # Storing the curvature for practice j's mode
+    H[j] <- sum(plogis(eta) * plogis(-eta)) + 1 / sigma^2
+  }
+  
+  list(
+    u_hat = setNames(u_hat, seq_len(cd$J)),
+    H = setNames(H, seq_len(cd$J))
+  )
+}
+
+# Both comparisons needed for B3
+# (+ returns results to display directly in the report)
+run_b3_cost <- function(settings = b3_settings) {
+  
+  theta <- c(settings$beta, log(settings$sigma))
+  
+  datasets <- lapply(settings$cluster_counts, function(J) {
+    sim <- rint_sim(J = J, m = settings$m, beta = settings$beta,
+                    sigma = log(settings$sigma))
+    cluster_data(sim$y, sim$X, factor(sim$group))
+  })
+  
+  
+  draws <- lapply(datasets, function(cd) {
+    is_draws(cd, R = settings$R_is, df = settings$df_is)
+  })
+  
+  likelihood_rows <- mode_rows <- list()
+  
+  for (i in seq_along(datasets)) {
+    
+    J <- settings$cluster_counts[i]; cd <- datasets[[i]]
+    
+    # Comparing evaluations for all methods
+    for (method in c("gh", "laplace", "agh", "is")) {
+      
+      # K only for the quadrature methods
+      K <- if (method == "gh") settings$K_gh else settings$K_agh
+      method_draws <- if (method == "is") draws[[i]] else NULL
+      
+      timing <- b3_time_evaluation(
+        function() {
+          marginal_loglik(theta, cd, method = method,
+                          K = K, draws = method_draws)},
+        settings = settings
+      )
+      
+      likelihood_rows[[length(likelihood_rows) + 1]] <- data.frame(
+        J = J,
+        method = method,
+        median_seconds = timing$median_seconds,
+        min_seconds = timing$min_seconds,
+        max_seconds = timing$max_seconds,
+        calls_per_batch = timing$calls_per_batch
+      )
+    }
+    
+    # Confirm that both mode finders produce comparable answers.
+    vectorised <- cluster_modes(theta, cd)
+    separate <- b3_separate_modes(theta, cd)
+    
+    mode_difference <- max(abs(vectorised$u_hat - separate$u_hat))
+    curvature_difference <- max(abs(vectorised$H - separate$H))
+    
+    if (!is.finite(mode_difference) || !is.finite(curvature_difference) ||
+        mode_difference >= 1e-5 || curvature_difference >= 1e-5) {
+      stop("Mode-finding implementations disagree for J = ", J)
+    }
+    
+    vectorised_time <- b3_time_evaluation(function() cluster_modes(theta, cd),
+                                          settings = settings)
+    separate_time <- b3_time_evaluation(function() b3_separate_modes(theta, cd),
+                                        settings = settings)
+    
+    mode_rows[[i]] <- data.frame(
+      J = J,
+      vectorised_seconds = vectorised_time$median_seconds,
+      separate_seconds = separate_time$median_seconds,
+      # speed-up > 1 means the vectorised version is faster
+      speed_up = separate_time$median_seconds / vectorised_time$median_seconds,
+      max_mode_difference = mode_difference,
+      max_curvature_difference = curvature_difference
+    )
+  }
+  
+  # Return tables for the report
+  list(
+    settings = settings,
+    likelihood_timings = do.call(rbind, likelihood_rows),
+    mode_timings = do.call(rbind, mode_rows)
+  )
+}
+
+
+
+```
+
+```{r}
+#| label: b3-run
+#| echo: false
+#| cache: true
+
+
+b3 <- run_b3_cost()
+```
+
+```{r}
+#| label: fig-b3-loglik
+#| fig-cap: "Median time (ms) for one evaluation of the log-likelihood (m = 5), with bars showing the min and max over 3 timing rounds"
+#| echo: false
+#| fig-width: 6
+#| fig-height: 3.5
+
+lt <- b3$likelihood_timings
+lt$method <- factor(lt$method, levels = c("laplace", "gh", "agh", "is"),
+                    labels = c("Laplace", "GH (K=10)", "AGH (K=7)", "IS (R=100)"))
+
+ggplot(lt, aes(J, median_seconds * 1000, colour = method)) +
+  geom_point() +
+  geom_line() +
+  geom_errorbar(aes(ymin = min_seconds * 1000, ymax = max_seconds * 1000), width = 0.05) +
+  scale_x_log10(breaks = c(50, 200, 800)) +
+  scale_y_log10() +
+  scale_colour_manual(values = c("Laplace" = "blue", "GH (K=10)" = "green",
+                                 "AGH (K=7)" = "red", "IS (R=100)" = "purple")) +
+  labs(x = "Number of clusters, J (log scale)", y = "Time per evaluation (ms, log scale)",
+       colour = "Method") +
+  theme_bw()
+
+# kept for the inline value in the text below
+wide <- reshape(lt[, c("J", "method", "median_seconds")],
+                idvar = "J", timevar = "method", direction = "wide")
+
+
+
+```
+
+```{r}
+#| label: fig-b3-modes
+#| fig-cap: "Time to find all cluster modes: vectorised cluster_modes() vs one optimize() call per cluster"
+#| echo: false
+#| fig-width: 6
+#| fig-height: 3.5
+
+mt <- b3$mode_timings
+mt_long <- data.frame(
+  J = rep(mt$J, 2),
+  ms = 1000 * c(mt$vectorised_seconds, mt$separate_seconds),
+  finder = rep(c("Vectorised cluster_modes()", "Per-cluster optimize()"), each = nrow(mt))
+)
+
+
+ggplot(mt_long, aes(J, ms, colour = finder)) +
+  geom_point() +
+  geom_line() +
+  scale_x_log10(breaks = c(50, 200, 800)) +
+  scale_y_log10() +
+  labs(x = "Number of clusters, J (log scale)", y = "Time (ms, log scale)",
+       colour = NULL) +
+  theme_bw() + theme(legend.position = "bottom")
+```
+
+If a fit needed hundreds of likelihood evaluations, `gh` would be attractive as one of the cheapest methods per evaluation (@fig-b3-loglik). However, @fig-b1 showed it loses accuracy as clusters grow, and in Part C this led to under-coverage for $\sigma$ at $m=20$. It is therefore a reasonable trade-off only for small clusters; otherwise the small extra cost of `agh` is worth paying.
+
+# Part C
+
+## C1 - Design {#sec-c1}
+
+**Aims:** Compare the four methods as ways of fitting the model by analysing the performance measures detailed below.
+
+**Data-generating mechanisms:** Simulating the data using `rint_sim()` with parameters $J=50$, $\beta$ = $(-0.5,1)$, $m = 2, 5$ and $20$ and $\sigma$ = 0.5 and 1.5.
+
+**Estimands**: $\beta_0$, $\beta_1$ and $\sigma$.
+
+**Methods:** `laplace`, `gh` with $K = 10$, `agh` with $K = 7$, and `is` with $R = 100$ draws, held fixed throughout each fit (see B2). Each is fitted using `fit_rint()` with BFGS, with standard errors from the numerical Hessian.
+
+**Performance measures**: bias and empirical SE for $\beta_1$ and $\sigma$, which together measure accuracy and coverage of the nominal 95% Wald interval (for $\sigma$, constructed on the log scale), which assesses whether the Hessian-based standard errors can be trusted. Failure rate and computing time are also reported, every measure is accompanied by its Monte Carlo SE.
+
+### C1.1 Treatment of failures
+
+A fit fails if `optim` returns a non-zero convergence code, an error is thrown or the standard errors cannot be computed. Failures are counted per method and scenario and excluded from the other measures. Reporting the failure rate matters because excluding them could make an unreliable method appear better than it is.
+
+## C2 - Number of replicates {#sec-c2}
+
+The Monte Carlo standard error (MCSE) of an estimated coverage $p$ is $\sqrt{p(1-p)/n}$. For it to be at most $0.01$ with $p=0.95$, we need to have $n \ge 0.95 \times 0.05/(0.01)^2 = 475$. The MCSE of a bias is $SD/\sqrt{n}$, so to detect a difference of $\delta$ we need $n \ge (SD/\delta)^2$.
+
+In a pilot of $50$ replicates, the largest empirical standard errors (SEs) were $0.35$ for $\beta_1$ and $1.045$ for $\sigma$ (where $m=2$ and $\sigma=1.5$). Therefore, detecting a difference of $0.05$ in $\beta_1$ and $0.1$ in $\sigma$ requires $n \ge 49$ and $n \ge 110$.
+
+Coverage was therefore the more demanding requirement, so we based the number of replicates for the study on it. We first ran $500$ replicates; however, in that run, some cells had coverage well below the nominal $0.95$. The lowest cell was $0.886$ for $\sigma$ at $m=2$ and $\sigma = 0.5$ with MCSE $0.014$, and so using this worst case we could work out $n \ge 0.886 \times 0.114/0.01^2 \approx 1010$. We therefore ran $1100$ replicates in the final run, and the target coverage was met with the largest coverage MCSE being $0.0098$.
+
+## C3 - Results {#sec-c3}
+
+We include the code for the simulation study in the appendix for reproducibility, but as an `eval: false` chunk below as it takes too long to run locally.
+
+```{r}
+#| eval: false
+
+specifications <- data.frame(
+  method = c("laplace", "gh", "agh", "is"),
+  K = c(NA, 10, 7, NA),
+  R = c(NA, NA, NA, 100)
+)
+
+fit_method <- function(cd, method, truth, K = NULL, draws = NULL) {
+  
+  # Time how long it takes fit_rint to run
+  start <- Sys.time()
+  fit <- tryCatch(
+    fit_rint(cd, method = method, K = K, draws = draws),
+    error = function(e) NULL
+  )
+  time <- as.numeric(difftime(Sys.time(), start, units = "secs"))
+  
+  # Initiaise necessary variables; if they don't exist, NA 
+  if (is.null(fit)) {
+    theta <- rep(NA, 3)
+    standard_error_theta <- rep(NA, 3)
+    converged <- FALSE
+  } else {
+    theta <- fit$par
+    standard_error_theta <- fit$se
+    converged <- fit$convergence == 0 && all(is.finite(standard_error_theta))
+  }
+  
+  # Calculations 
+  b1_estimate <- theta[2]
+  b1_standard_error <- standard_error_theta[2]
+  b1_lower <- b1_estimate - 1.96 * b1_standard_error
+  b1_upper <- b1_estimate + 1.96 * b1_standard_error
+  
+  sigma_estimate <- exp(theta[3])
+  sigma_standard_error <- sigma_estimate * standard_error_theta[3]
+  sigma_lower <- exp(theta[3] - 1.96 * standard_error_theta[3])
+  sigma_upper <- exp(theta[3] + 1.96 * standard_error_theta[3])
+  
+  data.frame(
+    method = method,
+    param = c("beta1", "sigma"),
+    true = unname(truth),
+    est = c(b1_estimate, sigma_estimate),
+    se = c(b1_standard_error, sigma_standard_error),
+    lower = c(b1_lower, sigma_lower),
+    upper = c(b1_upper, sigma_upper),
+    converged = converged,
+    time = time
+  )
+}
+
+simulate_replicate <- function(replicate, scenario, J, beta, seed, specifications) {
+  
+  # Set unique seed for each replicate 
+  set.seed(seed+100000*scenario$id+replicate)
+  
+  # Define necessary variables 
+  simulation <- rint_sim(J, scenario$m, beta, log(scenario$sigma))
+  cd <- cluster_data(simulation$y, simulation$X, factor(simulation$group))
+  R = specifications$R[specifications$method == "is"] 
+  draws <- is_draws(cd, R=R)
+  truth <- c(beta[2], scenario$sigma)
+  
+  # Fit each method in the specification
+  fits <- vector("list", nrow(specifications))
+  for (i in seq_len(nrow(specifications))) {
+    fits[[i]] <- fit_method(cd, specifications$method[i], truth, K=specifications$K[i], draws=draws)
+  }
+  
+  # Stack the results into one table 
+  results <- do.call(rbind, fits)
+  
+  # Put the scenaro deatils in front of every row 
+  cbind(rep = replicate, m=scenario$m, sigma=scenario$sigma, results)
+  
+}
+
+run_task <- function(i, tasks, scenarios, specifications, J, beta, seed) {
+  simulate_replicate(tasks$rep[i], scenarios[tasks$scenario[i], ], J, beta, seed, specifications)
+}
+
+run_study <- function(number_of_replicates, J = 50, beta = c(-0.5, 1), seed = 2026,
+                      cores = max(1, parallel::detectCores() - 1)) {
+  
+  # Build scenarios 
+  scenarios <- expand.grid(m = c(2, 5, 20), sigma = c(0.5, 1.5))
+  scenarios$id <- seq_len(nrow(scenarios))
+  
+  # Add tasks 
+  tasks <- expand.grid(scenario = seq_len(nrow(scenarios)), rep = seq_len(number_of_replicates))
+  tasks <- tasks[order(tasks$scenario, tasks$rep), ]
+  
+  # Define cluster 
+  cluster <- parallel::makeCluster(cores)
+  on.exit(parallel::stopCluster(cluster))
+  parallel::clusterEvalQ(cluster, library(randomEffects))
+  parallel::clusterExport(cluster, c("fit_method", "simulate_replicate", "run_task"))
+  
+  # Use parallelism to speed up results generation
+  results <- parallel::parLapplyLB(
+    cluster, seq_len(nrow(tasks)), run_task,
+    tasks = tasks, scenarios = scenarios, specifications = specifications,
+    J = J, beta = beta, seed = seed
+  )
+  
+  do.call(rbind, results)
+  
+}
+
+#run_full-Study
+study <- readRDS(here("results", "study.rds"))
+final <- summarise_study(study)
+```
+
+```{r}
+#| include: false
+coverage_plot <- function(results, param) {
+  d <- results[results$param == param, ]
+  d$method <- factor(d$method, levels = c("laplace", "gh", "agh", "is"))
+  
+  ggplot(d, aes(method, coverage, colour = method)) +
+    geom_hline(yintercept = 0.95, linetype = "dashed") +
+    geom_pointrange(aes(ymin = coverage - 1.96 * coverage_mcse,
+                        ymax = coverage + 1.96 * coverage_mcse)) +
+    facet_grid(sigma ~ m, labeller = label_both) +
+    scale_colour_manual(values = c(laplace = "blue", gh = "green",
+                                   agh = "red", is = "purple")) +
+    labs(x = "Method", y = "Coverage") +
+    theme_bw() + theme(legend.position = "none")
+}
+```
+
+```{r}
+#| echo: false
+#| label: fig-beta-coverage 
+#| fig-cap: "Empirical coverage of the 95% Wald interval for $\\beta_1$ by method."
+#| fig-width: 9
+#| fig-height: 5
+coverage_plot(final, "beta1")
+```
+
+```{r}
+#| echo: false
+#| label: fig-sigma-coverage
+#| fig-cap: "Empirical coverage of the 95% Wald interval for $\\sigma$ by method."
+#| fig-width: 9
+#| fig-height: 5
+coverage_plot(final, "sigma")
+```
+
+We ran $1100$ replicates per scenario. All fits converged except two `laplace` fits ($m=2$ and $\sigma=1.5$, as well as $m=5$ and $\sigma=0.5$), which are excluded from those cells. @tbl-beta and @tbl-sigma give bias, empirical standard error and coverage for $\beta_1$ and $\sigma$, @fig-beta-coverage and @fig-sigma-coverage show coverage, and @fig-c3-time provides time per fit.
+
+### Coverage of $\beta_1$
+
+For $\beta_1$, coverage sits close to $0.95$ for all four methods in most scenarios, ranging from $0.934$ to $0.968$ (@tbl-beta). There are two exceptions: all methods exhibit over-coverage at $m=2$ and $\sigma=0.5$ ($0.966$ to $0.968$), and `laplace` under-covers at $m=2$ and $\sigma=1.5$ ($0.934$). The bias in $\hat\beta_1$ is small and positive, and it is biggest at $m=2$ ($0.09$ to $0.12$) and has almost vanished by $m=20$ (less than $0.005$). From $m=5$ upwards, the four methods are essentially the same in terms of bias and empirical standard error. The differences show at $m=2$, where the empirical standard error at $\sigma=1.5$ is $1.39$ for `laplace` but only $0.44$ to $0.59$ for the other three.
+
+### Coverage of $\sigma$
+
+The picture for $\sigma$ is less even (@tbl-sigma, @fig-sigma-coverage). At $m=2$ and $\sigma=0.5$, `gh`, `agh` and `is` all exhibit under-coverage at $0.879$ to $0.881$, which is well short of the $0.95$ with a given Monte Carlo standard error of about $0.01$. `laplace` manages $0.948$. `gh` on its own also presents with under-coverage at $m=20$ and $\sigma=1.5$ ($0.918$), where all other methods are at $0.945$. At $m=20$ and $\sigma=0.5$, every method exhibits overcoverage ($0.973$ and $0.975$) and $\hat\sigma$ has a negative bias of about $-0.024$. `laplace` at $m=2$ and $\sigma=1.5$ has coverage of $0.985$ but its empirical standard error is $3.57$, so the coverage comes from very wide intervals.
+
+### Timing
+
+`gh` and `laplace` were the fastest methods at $m=2$ and $m=5$ ($0.43$ to $0.58$s per fit), with `agh` about twice as slow and `is` being the slowest, taking $0.99$s at $m=2$ and $1.49$s at $m=5$ (@fig-c3-time). By $m=20$, the gap between `laplace`, `gh` and `agh` had mostly closed ($0.97$, $1.01$ and $1.06$s), while `is` was still more than twice as slow as the others at $2.52$s. Run time grew with $m$ for `gh`, `is` and `laplace`; `agh`, however, did not rise consistently with $m$ ($0.92$, $0.80$, $1.06$s). The study ran parallel on 15 workers, so the times included some slowdown from competing workers.
+
+```{r}
+#| include: false
+tab_columns <- c("method", "bias", "bias_mcse", "emp_se", "coverage", "coverage_mcse")
+
+performance_table <- function(results, param) {
+  
+  methods <- c("laplace", "gh", "agh", "is")
+  
+  results <- results[results$param == param, ]
+  results$method <- factor(results$method, levels = methods)
+  results <- results[order(results$sigma, results$m, results$method), ]
+  results[, c("m", "sigma", tab_columns)]
+  
+}
+```
+
+```{r}
+#| label: tbl-beta
+#| tbl-cap: "Performance for $\\beta_1$ by cluster size"
+#| tbl-subcap:
+#|   - "m = 2"
+#|   - "m = 5"
+#|   - "m = 20"
+#| echo: false
+#| tbl-pos: "H"
+
+tab <- performance_table(final, "beta1")
+knitr::kable(tab[tab$m == 2,  -1], row.names = FALSE, digits = 3)
+knitr::kable(tab[tab$m == 5,  -1], row.names = FALSE, digits = 3)
+knitr::kable(tab[tab$m == 20, -1], row.names = FALSE, digits = 3)
+```
+
+```{r}
+#| label: tbl-sigma
+#| tbl-cap: "Performance for $\\sigma$ by cluster size"
+#| tbl-subcap:
+#|   - "m = 2"
+#|   - "m = 5"
+#|   - "m = 20"
+#| echo: false
+#| tbl-pos: "H"
+
+tab <- performance_table(final, "sigma")
+knitr::kable(tab[tab$m == 2,  -1], row.names = FALSE, digits = 3)
+knitr::kable(tab[tab$m == 5,  -1], row.names = FALSE, digits = 3)
+knitr::kable(tab[tab$m == 20, -1], row.names = FALSE, digits = 3)
+```
+
+```{r}
+#| label: fig-c3-time
+#| fig-cap: "Mean time per fit by method and cluster size (bars: ±1.96 MCSE), averaged over both values of $\\sigma$"
+#| echo: false
+#| fig-width: 6
+#| fig-height: 3.5
+
+time_fits <- study[study$param == "beta1", ]   # one row per fit
+
+time_df <- aggregate(time ~ method + m, data = time_fits,
+                     FUN = function(x) c(mean = mean(x), se = sd(x) / sqrt(length(x))))
+time_df <- data.frame(method = time_df$method, m = time_df$m,
+                      mean = time_df$time[, "mean"], se = time_df$time[, "se"])
+time_df$method <- factor(time_df$method, levels = c("laplace", "gh", "agh", "is"))
+
+dodge <- position_dodge(width = 0.4)
+
+ggplot(time_df, aes(factor(m), mean, colour = method, group = method)) +
+  geom_line(position = dodge, alpha = 0.5) +
+  geom_pointrange(aes(ymin = mean - 1.96 * se, ymax = mean + 1.96 * se),
+                  position = dodge, size = 0.3) +
+  scale_y_log10() +
+  scale_colour_manual(values = c(laplace = "blue", gh = "green", agh = "red", is = "purple")) +
+  labs(x = "Cluster size, m", y = "Mean time per fit (s, log scale)", colour = "Method") +
+  theme_bw()
+```
+
+## C4 - Recommendations {#sec-c4}
+
+We recommend `agh` ($K=7$) as the default. Across all six scenarios it was never the worst method, and its cost is modest (@fig-c3-time). Like `laplace`, `agh` uses each practice's mode and curvature, but it shifts and scales several quadrature points around the peak and evaluates the actual integrand there, so it captures more of the shape and had the lowest error in @fig-b1. The alternatives are only acceptable in some settings.
+
+**Small clusters, large** $\sigma$ ($m=2$, $\sigma=1.5$): avoid `laplace`. Its empirical SE was $1.39$ for $\beta_1$ (against $0.44$ to $0.59$ for the others) and $3.57$ for $\sigma$, and its $\beta_1$ interval under-covered ($0.934$). With only two binary observations, $h_j(u)$ is skewed, but `laplace` approximates it with a normal shape around its peak, so it misses this skewness.
+
+**Large clusters, large** $\sigma$ ($m=20$, $\sigma=1.5$): avoid `gh`, whose coverage for $\sigma$ fell to $0.918$ while the others stayed at $0.945$. As $m$ grows, $h_j(u)$ concentrates around a mode away from zero, but `gh` places its nodes around zero, so it struggles to capture this.
+
+**Moderate clusters (**$m=5$): all four methods performed essentially identically, so the cheaper `laplace` or `gh` would also be acceptable.
+
+**Small clusters, small** $\sigma$ ($m=2$, $\sigma=0.5$): coverage for $\sigma$ was about $0.88$ for `gh`, `agh` and `is`. Since these three agree closely, this most likely reflects the Wald interval for $\sigma$ performing poorly with little data per cluster, rather than integration error.
+
+**`is`** offered no advantage. Its estimates matched `agh`, but it was the slowest method ($2.52$s per fit at $m=20$; @fig-c3-time) because it evaluates $R$ draws per practice. Its $\ell$ is also biased downwards and jagged unless the same draws are reused (@sec-b2).
+
+# Part D
+
+```{r}
+#| echo: false
+
+#data
+cd <- cluster_data(gp$attended, model.matrix(~ age, data = gp), factor(gp$practice))
+draws_is <- is_draws(cd, R = 100)
+rec <- "agh"
+```
+
+We start by examining the data
+
+```{r}
+#| label: fig-d1-eda
+#| fig-cap: "Exploratory plots of the attendance data"
+#| fig-subcap:
+#|   - "Observed attendance rate by practice, sorted; point size is the number of patients"
+#|   - "Attendance against age, with a logistic fit ignoring practice"
+#| layout-ncol: 2
+#| echo: false
+#| message: false
+
+prac <- aggregate(attended ~ practice, data = gp, FUN = function(x) c(rate = mean(x), n = length(x)))
+prac <- data.frame(practice = prac$practice, rate = prac$attended[, "rate"], n = prac$attended[, "n"])
+prac$rank <- rank(prac$rate, ties.method = "first")
+
+ggplot(prac, aes(rank, rate, size = n)) +
+  geom_point(alpha = 0.6) +
+  geom_hline(yintercept = mean(gp$attended), linetype = "dashed") +
+  labs(x = "Practice (sorted by attendance rate)", y = "Proportion attended", size = "Patients") +
+  theme_bw()
+
+ggplot(gp, aes(age, attended)) +
+  geom_jitter(height = 0.05, width = 0, alpha = 0.3) +
+  geom_smooth(method = "glm", method.args = list(family = binomial), se = FALSE, colour = "red") +
+  labs(x = "Age", y = "Attended") +
+  theme_bw()
+```
+
+Notice we are in a case where we have `r length(unique(gp$practice))` practices with between `r min(table(gp$practice))` and `r max(table(gp$practice))` patients each (median `r median(table(gp$practice))`), closest to the $m = 5$ scenario in Part C.
+
+```{r}
+#| label: d1-fit
+#| echo: false
+#| cache: true
+
+# fit each method with fit_rint
+fits <- list(
+  agh     = fit_rint(cd, "agh", K = 7),
+  gh      = fit_rint(cd, "gh",  K = 10),
+  is      = fit_rint(cd, "is",  draws = draws_is),
+  laplace = fit_rint(cd, "laplace")
+)
+
+# estimates with 95% Wald CIs (sigma's CI is built on the log scale, then back-transformed)
+z <- qnorm(0.975)
+results <- do.call(rbind, lapply(names(fits), function(m) {
+  est   <- fits[[m]]$par
+  se    <- fits[[m]]$se
+  lower <- est - z * se
+  upper <- est + z * se
+  data.frame(
+    Method    = m,
+    Parameter = c("beta0", "beta1", "sigma"),
+    est   = c(est[1:2],   exp(est[3])),
+    lower = c(lower[1:2], exp(lower[3])),
+    upper = c(upper[1:2], exp(upper[3]))
+  )
+}))
+
+# predicted attendance at average age, practices +/- 1 SD (recommended method)
+b0 <- fits$agh$par[1]
+b1 <- fits$agh$par[2]
+s  <- exp(fits$agh$par[3])
+age_bar <- mean(gp$age)                 # equals 0 if age is already centred
+p_hi <- plogis(b0 + b1 * age_bar + s)
+p_lo <- plogis(b0 + b1 * age_bar - s)
+or_age <- exp(b1)
+```
+
+```{r}
+#| label: tbl-d1
+#| tbl-cap: "Estimates (95% Wald CI) for attended ~ age with a random intercept for practice. CIs for $\\sigma$ are built on the log $\\sigma$ scale and back-transformed."
+#| echo: false
+
+fmt_ci <- function(est, lo, hi, d = 2) {
+  sprintf(paste0("%.", d, "f (%.", d, "f, %.", d, "f)"), est, lo, hi)
+}
+
+results$cell <- fmt_ci(results$est, results$lower, results$upper)
+
+d1_tab <- reshape(
+  results[, c("Method", "Parameter", "cell")],
+  idvar = "Method", timevar = "Parameter", direction = "wide"
+)
+
+# Add the age odds ratio, exp(beta1)
+b1 <- results[results$Parameter == "beta1", ]
+d1_tab$or <- fmt_ci(exp(b1$est), exp(b1$lower), exp(b1$upper))
+
+# Order rows (recommended method first) and tidy labels
+d1_tab <- d1_tab[match(c("agh", "laplace", "gh", "is"), d1_tab$Method), ]
+d1_tab$Method <- c("AGH (K=7)", "Laplace", "GH (K=10)", "IS (R=100)")
+
+knitr::kable(
+  d1_tab[, c("Method", "cell.beta0", "cell.beta1", "or", "cell.sigma")],
+  col.names = c("Method", "$\\beta_0$", "$\\beta_1$ (age)",
+                "OR for age", "$\\sigma$"),
+  row.names = FALSE, escape = FALSE
+)
+
+
+
+
+```
+
+## D1 - Analysis
+
+All four methods give very similar estimates (@tbl-d1): `agh` and `is` agree to two decimal places, and `laplace` and `gh` differ by at most $0.02$ in $\beta_0$ and $\beta_1$, well within the confidence intervals. The only visible differences are in $\hat\sigma$, where `laplace` is lowest ($1.64$) and `gh` highest with the widest interval ($1.77$), consistent with the integration error seen in @sec-c3.
+
+Exponentiating $\hat\beta_1$, a one-unit increase in age multiplies a patient's odds of attending by `r sprintf("%.2f", exp(fits$agh$par[2]))` (95% CI excludes 1), a clear positive effect as expected from @fig-d1-eda-2.
+
+The between-practice SD $\hat\sigma =$ `r round(exp(fits$agh$par[3]), 2)` is large on the log-odds scale, about twice the age effect, so which practice a patient attends matters substantially, as @fig-d1-eda-1 suggested. @tbl-SD-interp shows how much the predicted attendance probability differs between practices one SD above and below average.
+
+```{r}
+#| label: tbl-SD-interp
+#| tbl-cap: "Predicted attendance probability for a patient of average age at a practice one standard deviation above and below average"
+#| echo: false
+
+age_bar <- mean(gp$age)   # 0 if age is centred
+
+probs <- do.call(rbind, lapply(names(fits), function(m) {
+  b0 <- fits[[m]]$par[1]
+  b1 <- fits[[m]]$par[2]
+  s  <- exp(fits[[m]]$par[3])
+  p  <- plogis(b0 + b1 * age_bar + c(-1, 1) * s)
+  data.frame(Method = m, p_below = p[1], p_above = p[2])
+}))
+
+probs <- probs[match(c("agh", "laplace", "gh", "is"), probs$Method), ]
+probs$Method <- c("AGH (K=7)", "Laplace", "GH (K=10)", "IS (R=100)")
+knitr::kable(probs, row.names = FALSE, digits = 2,
+             col.names = c("Method", "1 SD below", "1 SD above"))
+
+```
+
+## D2 - Do the practices matter?
+
+```{r}
+#| label: tbl-D2-CV
+#| tbl-cap: "Cross validation score along with mcse of our recommended method versus R's glm function - showing our method perform better"
+#| echo: false
+rec = "agh"
+
+fitter<- function(train, test,method="glm",K=NULL,draws=NULL) { 
+  
+  #baseline GLM model
+  
+  if (method=="glm"){
+    fit <- glm(attended ~ age, family = binomial, data = train) #fit model
+    p <- predict(fit, test, type = "response") #predict model on test dataset
+    return (sum(dbinom(test$attended, 1, p, log = TRUE))) #let log-lik be the error measure
+  }
+  
+  
+  #check is one of required fns
+  if (!method %in% (c("agh","gh","is","laplace"))){
+    stop("method must be one of 'agh', 'gh', 'is', 'laplace'")
+  }
+  
+  # method-specific defaults if not supplied
+  if (is.null(K)) {
+    K <- switch(method,
+                agh = 7,    # adaptive: few nodes needed
+                gh  = 10,    # non-adaptive: needs more nodes
+                NULL)        # laplace / is don't use K
+  }
+  if (method == "is" && is.null(draws)) draws <- 100
+  
+  
+  #change data
+  cd_train <- cluster_data(train$attended, model.matrix(~ age, data = train), train$practice)
+  cd_test <- cluster_data(test$attended, model.matrix(~ age, data = test), test$practice)
+  
+  
+  # IS needs its own draws matrix for each dataset (one row per practice)
+  draws_train <- draws_test <- NULL
+  if (method == "is") {
+    draws_train <- is_draws(cd_train, R = draws)
+    draws_test  <- is_draws(cd_test,  R = draws)
+  }
+  
+  #and fit on training data
+  fit_train <- fit_rint(cd_train,method,K,draws_train)
+  
+  # 2. score held-out practices at those estimates (no refitting)
+  return (marginal_loglik(fit_train$par, cd_test, method, K = K, draws = draws_test))
+}
+
+#adapted from lecture 12
+cross_validation <- function(data,fitter,...,folds=5) {
+  
+  
+  stopifnot(is.numeric(folds), folds >= 2)
+  
+  practices <- unique(data$practice)
+  fold_of <- sample(rep(1:folds, length.out = length(practices)))   # fold per practice
+  names(fold_of) <- practices
+  data$fold <- fold_of[as.character(data$practice)]             # each patient gets their practice's fold
+  
+  fold_score <- numeric(folds)
+  
+  for (k in 1:folds) {
+    train <- data[data$fold != k, ]
+    test  <- data[data$fold == k, ]
+    fold_score[k] <- fitter(train, test,...)       # fitter fits on train, returns held-out log-lik on test
+  }
+  c(cv=mean(fold_score), se = stats::sd(fold_score) / sqrt(folds))
+}
+
+set.seed(2026); s_glm <- cross_validation(data = gp, fitter = fitter)
+set.seed(2026); s_rec <- cross_validation(data = gp, fitter = fitter, method = rec)
+
+d2_tab <- data.frame(
+  Model = c("Random intercept", "Pooled logistic (glm)"),
+  rbind(s_rec, s_glm),
+  row.names = NULL
+)
+
+
+
+knitr::kable(d2_tab, digits = 2, col.names = c("Model", "CV score", "SE"))
+```
+
+@tbl-D2-CV shows that the random-intercept model beats the pooled `glm`, with a 5-fold cross-validated held-out log-likelihood of `r round(d2_tab$cv[1], 2)` (SE `r round(d2_tab$se[1], 2)`) against `r round(d2_tab$cv[2], 2)` (SE `r round(d2_tab$se[2], 2)`), with folds leaving out whole practices.
+
+Leaving out random patients would be incorrect. Patients share a practice effect, so practice-mates in the training set would leak information about held-out patients, making scores over-optimistic, especially for the random-intercept model. Folds would also no longer be independent, invalidating the SE, and since $\sum_j \log L_j$ is defined per practice, each practice must stay in one fold.
+
+# Appendix
+
+```{r}
+#| label: appendix
+#| ref.label: !expr setdiff(knitr::all_labels(), "appendix")
+#| echo: true
+#| eval: false
+
+```
