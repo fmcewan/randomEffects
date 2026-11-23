@@ -281,7 +281,7 @@ by a second-order Taylor expansion. Summed over clusters, this is the dashed lin
 
 ### Fresh draws
 
-We now show why draws need to stay fixed for `is`. As otherwise the optimiser's BFGS estimates the gradient using finite differences in $\ell$ at nearby values of $\theta$. When fresh draws are used, these differences are dominated by Monte Carlo noise rather than genuine changes in $\ell$, making the estimated gradient unreliable. Consequently, the optimiser takes large steps in random directions and may move towards extreme values of $\theta$, where `cluster_modes()` is unable to find the modes, leading to the observed error.
+We now show why draws must stay fixed for `is`. Without fixed draws, the optimiser's BFGS estimates the gradient using finite differences in $\ell$ at nearby values of $\theta$. These differences are dominated by Monte Carlo noise rather than genuine changes in $\ell$, making the estimated gradient unreliable. Consequently, the optimiser takes large steps in random directions and may move towards extreme values of $\theta$, where `cluster_modes()` is unable to find the modes, leading to the observed error.
 
 ```{r}
 #| label: fig-b2-crn
