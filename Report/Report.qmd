@@ -12,20 +12,24 @@ execute:
   echo: false
 ---
 
+# Data loading chunk
+
 ```{r}
-#| include: false
-set.seed(4113)
-library(here)
+#| label: load data
+#| echo: true
+#| message: false
+
 group <- 5
-source(here("raw_data", "group_data.R"))
+source(here::here("raw_data", "group_data.R"))
 gp <- group_data(group)
 ```
 
 ```{r}
 #| label: setup
 #| include: false
-devtools::load_all(here::here())
 
+set.seed(4113)
+devtools::load_all(here::here())
 library(ggplot2)
 ```
 
@@ -648,6 +652,7 @@ Coverage was therefore the more demanding requirement, so we based the number of
 We include the code for the simulation study in the appendix for reproducibility, but as an `eval: false` chunk below as it takes too long to run locally.
 
 ```{r}
+#| include: false
 #| eval: false
 
 specifications <- data.frame(
@@ -759,13 +764,16 @@ run_study <- function(number_of_replicates, J = 50, beta = c(-0.5, 1), seed = 20
   
 }
 
-#run_full-Study
-study <- readRDS(here("results", "study.rds"))
-final <- summarise_study(study)
+
 ```
 
 ```{r}
 #| include: false
+
+#run_full-Study
+study <- readRDS(here::here("results", "study.rds"))
+final <- summarise_study(study)
+
 coverage_plot <- function(results, param) {
   d <- results[results$param == param, ]
   d$method <- factor(d$method, levels = c("laplace", "gh", "agh", "is"))
