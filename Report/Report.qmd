@@ -57,6 +57,12 @@ In our package we have data functions:
 
   - Note `cluster_modes` uses Newton’s method which is suitable here because each cluster’s log-integrand has a strictly negative second derivative, so will give a unique mode. A zero gradient, therefore, identifies that mode rather than a minimum or saddle point. Backtracking safeguards the updates by shortening steps that do not sufficiently improve the objective. 
 
+- `fitrint()`  - fits random intercept model
+
+- `marginal_loglik()`  - adds up per cluster log-likelihoods
+
+- `summarise_study()`  - returns one row per scenario for results of simulation study
+
 ## Approximation functions:
 
 - `gh`: non-adaptive numerical integral based on Gauss-Hermite.
@@ -65,7 +71,7 @@ In our package we have data functions:
 
 - `agh` also uses the mode and curvature, but shifts and scales several quadrature points around each practice’s peak. It evaluates the actual integrand at those points and combines the values using corrected weights.
 
-- `cluster_loglik(theta, cd, method = "is", draws)`: estimates each $\log L_j$ using importance sampling with a $t$ proposal centred at the cluster's mode and scaled by its curvature, as determined by `cluster_modes()` and returns each cluster's Monte Carlo SE in the `mc_se` attribute.
+- `cluster_loglik(theta, cd, method = "is", draws)`: Dispatches to all methods - if `method=is` estimates each $\log L_j$ using importance sampling with a $t$ proposal centred at the cluster's mode and scaled by its curvature, as determined by `cluster_modes()` and returns each cluster's Monte Carlo SE in the `mc_se` attribute.
 
 # Table of tests {#sec-tests}
 
@@ -851,7 +857,7 @@ ggplot(time_df, aes(factor(m), mean, colour = method, group = method)) +
 
 ## C4 - Recommendations {#sec-c4}
 
-We recommend `agh` ($K=7$) as the default. Across all six scenarios its bias and coverage were never clearly worse than other methods (@fig-c3-time). Like `laplace`, `agh` uses each practice's mode and curvature, but it shifts and scales several quadrature points around the peak and evaluates the actual integrand there, so it captures more of the shape and had the lowest error in @fig-b1. The alternatives though are acceptable in some settings.
+We recommend `agh` ($K=7$) as the default. Across all six scenarios its bias and coverage were never clearly the worst @fig-beta-coverage, @fig-sigma-coverage. Like `laplace`, `agh` uses each practice's mode and curvature, but it shifts and scales several quadrature points around the peak and evaluates the actual integrand there, so it captures more of the shape and had the lowest error in @fig-b1. The alternatives though are acceptable in some settings.
 
 **Small clusters, large** $\sigma$ ($m=2$, $\sigma=1.5$): avoid `laplace`. Its empirical SE was $1.39$ for $\beta_1$ (against $0.44$ to $0.59$ for the others) and $3.57$ for $\sigma$, and its $\beta_1$ interval under-covered ($0.934$). With only two binary observations, $h_j(u)$ is skewed, but `laplace` approximates it with a normal shape around its peak, so it misses this skewness.
 
@@ -984,7 +990,7 @@ knitr::kable(
 
 All four methods give very similar estimates (@tbl-d1): `agh` and `is` agree to two decimal places, and `laplace` and `gh` differ by at most $0.02$ in $\beta_0$ and $\beta_1$, well within the confidence intervals. The only visible differences are in $\hat\sigma$, where `laplace` is lowest ($1.64$) and `gh` highest with the widest interval ($1.77$), consistent with the integration error seen in @sec-c3.
 
-Exponentiating $\hat\beta_1$, a one-unit increase in age multiplies a patient's odds of attending by `r sprintf("%.2f", exp(fits$agh$par[2]))` (95% CI excludes 1), a clear positive effect as expected from @fig-d1-eda-2.
+Exponentiating $\hat\beta_1$, a one-unit increase in the SD of age multiplies a patient's odds of attending by `r sprintf("%.2f", exp(fits$agh$par[2]))` (95% CI excludes 1), a clear positive effect as expected from @fig-d1-eda-2.
 
 The between-practice SD $\hat\sigma =$ `r round(exp(fits$agh$par[3]), 2)` is large on the log-odds scale, about twice the age effect, so which practice a patient attends matters substantially, as @fig-d1-eda-1 suggested. @tbl-SD-interp shows how much the predicted attendance probability differs between practices one SD above and below average.
 
@@ -1014,7 +1020,7 @@ knitr::kable(probs, row.names = FALSE, digits = 2,
 
 ```{r}
 #| label: tbl-D2-CV
-#| tbl-cap: "Cross validation score along with mcse of our recommended method versus R's glm function - showing our method perform better"
+#| tbl-cap: "Cross validation score along with SE across folds of our recommended method versus R's glm function - showing our method perform better"
 #| echo: false
 rec = "agh"
 
