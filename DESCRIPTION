@@ -19,7 +19,8 @@ Suggests:
     ggplot2,
     here,
     knitr,
-    rmarkdown
+    rmarkdown,
+    tinytex
 Config/testthat/edition: 3
 Imports: 
     numDeriv,

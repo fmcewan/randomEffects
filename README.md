@@ -39,6 +39,13 @@ fit$par
 
 ## Reproducing the report
 
+The report renders to PDF, which needs a LaTeX installation. If you don't have one:
+
+    install.packages("tinytex")
+    tinytex::install_tinytex()
+
+(or `quarto install tinytex` from the terminal)
+
 The report needs some extra packages (listed under `Suggests` in
 `DESCRIPTION`) and [Quarto](https://quarto.org).
 
