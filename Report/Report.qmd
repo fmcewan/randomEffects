@@ -629,7 +629,7 @@ If a fit needed hundreds of likelihood evaluations, `gh` would be attractive as 
 
 **Data-generating mechanisms:** Simulating the data using `rint_sim()` with parameters $J=50$, $\beta$ = $(-0.5,1)$, $m = 2, 5$ and $20$ and $\sigma$ = 0.5 and 1.5.
 
-**Estimands**: $\beta_0$, $\beta_1$ and $\sigma$.
+**Estimands**: $\beta_1$ and $\sigma$.
 
 **Methods:** `laplace`, `gh` with $K = 10$, `agh` with $K = 7$, and `is` with $R = 100$ draws, held fixed throughout each fit (see B2). Each is fitted using `fit_rint()` with BFGS, with standard errors from the numerical Hessian.
 
