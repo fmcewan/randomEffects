@@ -47,7 +47,7 @@ In our package we have data functions:
 
 - `cluster_integral(theta, cd, j)`: calculates the true marginal likelihood of a cluster
 
-- `rint_sim(J, m, beta, sigma)`: simulate data according to the model with one standard-normal covariate
+- `rint_sim(J, m, beta, sigma)`: simulate data according to the model with one standard-normal covariate. The sigma provided is assumed to be $\log(\sigma)$
 
 - `is_draws(cd, R, df)`: returns a fixed $J \times R$ matrix of standardised draws from a $t$-distribution with `df` degrees of freedom, with one row per cluster, generated once and reused at every $\theta$ (common random numbers).
 
@@ -81,6 +81,7 @@ In our package we have data functions:
 #| echo: false
 #| message: false
 
+#----------------Section A - Table 1 - tests ----------------------#
 res <- devtools::test(reporter = "silent")
 df  <- as.data.frame(res)
 df$file <- sub("^test-", "", sub("\\.R$", "", df$file))
@@ -107,7 +108,9 @@ Notice in @tbl-tests that all `r tab$Checks[tab$File == "Total"]` pass as requir
 
 ```{r}
 #| echo: false
-# Simulation settings
+
+
+#-----Section B - data set up---------#
 beta <- c(-0.5,1)
 sigma <- 1.5
 theta <- c(beta, log(sigma))
@@ -123,6 +126,7 @@ theta <- c(beta, log(sigma))
 #|   - "m = 2"
 #| layout-ncol: 2
 
+#-----Section B1 - Graph 1---------#
 K <- 1:30 #let K vary from 1 to 30
 
 # Generate datasets
@@ -208,6 +212,7 @@ Every additional observation $m$ adds another log-likelihood contribution to $h_
 #| include: false
 #| cache: true
 
+#-----Section B2 - data-setup and run---------#
 cd20 <- cluster_data(sim_data_20$y, sim_data_20$X, factor(sim_data_20$group)) #this runs on B1 dataset
 
 truth <- marginal_loglik(theta, cd20, method = "agh", K = 50)
@@ -264,6 +269,8 @@ profile_df <- data.frame(
 #| layout-ncol: 2
 #| echo: false
 
+#-----Section B2 - Graph 1 ----------------#
+
 ggplot(results, aes(R, bias)) +
   geom_hline(yintercept = 0, colour = "grey60") +
   geom_pointrange(aes(ymin = bias - 2 * bias_mcse, ymax = bias + 2 * bias_mcse)) +
@@ -300,6 +307,7 @@ We now show why draws must stay fixed for `is`. Without fixed draws, the optimis
 #| fig-width: 6
 #| fig-height: 3.5
 
+#-----Section B2 - Graph 2 ----------------#
 ggplot(profile_df, aes(sigma, ell, colour = draws)) +
   geom_line() +
   labs(x = expression(sigma), y = "IS log-likelihood", colour = NULL) +
@@ -312,6 +320,8 @@ ggplot(profile_df, aes(sigma, ell, colour = draws)) +
 #| cache: true
 #| dependson: b2-run
 
+
+#-----Section B2 - run fresh draws ----------------#
 
 # Starting values as in fit_rint(): pooled logistic regression, log sigma = 0
 start <- c(unname(coef(glm(cd20$y ~ cd20$X - 1, family = binomial))), 0)
@@ -356,6 +366,8 @@ b2_fits_subset<-b2_fits[, c("fit", "error")]
 #| tbl-cap: "Five IS fits (R = 100) drawing fresh draws at every likelihood evaluation, compared with one fit using fixed draws. Showing fresh draws error in all 5 cases"
 #| echo: false
 
+#-----Section B2 - Table 1 ----------------#
+
 tab <- b2_fits_subset
 if (all(is.na(tab$error))) tab$error <- NULL   # drop error column if nothing failed
 tab$error[is.na(tab$error)] <- "Converged"
@@ -378,6 +390,8 @@ We now show the evaluation cost of the respective methods.
 
 ```{r}
 #| echo: false
+
+#-----Section B3---------------------#
 
 # Default settings (to be able to pass this as one variable later)
 b3_settings <- list(
@@ -565,6 +579,7 @@ run_b3_cost <- function(settings = b3_settings) {
 #| echo: false
 #| cache: true
 
+#-----run B3 function---------------------#
 
 b3 <- run_b3_cost()
 ```
@@ -575,6 +590,8 @@ b3 <- run_b3_cost()
 #| echo: false
 #| fig-width: 6
 #| fig-height: 3.5
+
+#-----Section B3 - Graph 1---------------------#
 
 lt <- b3$likelihood_timings
 lt$method <- factor(lt$method, levels = c("laplace", "gh", "agh", "is"),
@@ -606,6 +623,8 @@ wide <- reshape(lt[, c("J", "method", "median_seconds")],
 #| echo: false
 #| fig-width: 6
 #| fig-height: 3.5
+
+#-----Section B3 - Graph 2---------------------#
 
 mt <- b3$mode_timings
 mt_long <- data.frame(
@@ -661,6 +680,7 @@ We include the code for the simulation study in the appendix for reproducibility
 #| include: false
 #| eval: false
 
+#----------------Section C - Sim study code not evaluated-------------#
 specifications <- data.frame(
   method = c("laplace", "gh", "agh", "is"),
   K = c(NA, 10, 7, NA),
@@ -776,9 +796,13 @@ run_study <- function(number_of_replicates, J = 50, beta = c(-0.5, 1), seed = 20
 ```{r}
 #| include: false
 
+#----------------Section C - pull RDS data from sim_study-------------#
+
 #run_full-Study
 study <- readRDS(here::here("results", "study.rds"))
 final <- summarise_study(study)
+
+#----------------Section C - graphing function-------------#
 
 coverage_plot <- function(results, param) {
   d <- results[results$param == param, ]
@@ -802,6 +826,9 @@ coverage_plot <- function(results, param) {
 #| fig-cap: "Empirical coverage of the 95% Wald interval for $\\beta_1$ by method."
 #| fig-width: 9
 #| fig-height: 5
+
+#----------------Section C - Graph 1 - beta1-------------#
+
 coverage_plot(final, "beta1")
 ```
 
@@ -811,6 +838,9 @@ coverage_plot(final, "beta1")
 #| fig-cap: "Empirical coverage of the 95% Wald interval for $\\sigma$ by method."
 #| fig-width: 9
 #| fig-height: 5
+
+#----------------Section C - Graph 2 - sigma-------------#
+
 coverage_plot(final, "sigma")
 ```
 
@@ -834,6 +864,8 @@ The picture for $\sigma$ is less even (@tbl-sigma, @fig-sigma-coverage). At $m=2
 #| echo: false
 #| fig-width: 6
 #| fig-height: 3.5
+
+#----------------Section C - Graph 3 - times-------------#
 
 time_fits <- study[study$param == "beta1", ]   # one row per fit
 
@@ -874,6 +906,8 @@ We recommend `agh` ($K=7$) as the default. Across all six scenarios its bias and
 ```{r}
 #| echo: false
 
+#---------------Section D - data-load------------------#
+
 #data
 cd <- cluster_data(gp$attended, model.matrix(~ age, data = gp), factor(gp$practice))
 draws_is <- is_draws(cd, R = 100)
@@ -892,6 +926,7 @@ We start by examining the data
 #| echo: false
 #| message: false
 
+#---------------Section D - Graph 1 - EDA------------------#
 prac <- aggregate(attended ~ practice, data = gp, FUN = function(x) c(rate = mean(x), n = length(x)))
 prac <- data.frame(practice = prac$practice, rate = prac$attended[, "rate"], n = prac$attended[, "n"])
 prac$rank <- rank(prac$rate, ties.method = "first")
@@ -915,6 +950,8 @@ Notice we are in a case where we have `r length(unique(gp$practice))` practices 
 #| label: d1-fit
 #| echo: false
 #| cache: true
+
+#---------------Section D - fit methods------------------#
 
 # fit each method with fit_rint
 fits <- list(
@@ -954,6 +991,8 @@ or_age <- exp(b1)
 #| label: tbl-d1
 #| tbl-cap: "Estimates (95% Wald CI) for attended ~ age with a random intercept for practice. CIs for $\\sigma$ are built on the log $\\sigma$ scale and back-transformed."
 #| echo: false
+
+#---------------Section D - Table 1------------------#
 
 fmt_ci <- function(est, lo, hi, d = 2) {
   sprintf(paste0("%.", d, "f (%.", d, "f, %.", d, "f)"), est, lo, hi)
@@ -999,6 +1038,7 @@ The between-practice SD $\hat\sigma =$ `r round(exp(fits$agh$par[3]), 2)` is lar
 #| tbl-cap: "Predicted attendance probability for a patient of average age at a practice one standard deviation above and below average"
 #| echo: false
 
+#---------------Section D - Table 2 - attendance prob.------------------#
 age_bar <- mean(gp$age)   # 0 if age is centred
 
 probs <- do.call(rbind, lapply(names(fits), function(m) {
@@ -1022,6 +1062,9 @@ knitr::kable(probs, row.names = FALSE, digits = 2,
 #| label: tbl-D2-CV
 #| tbl-cap: "Cross validation score along with SE across folds of our recommended method versus R's glm function - showing our method perform better"
 #| echo: false
+
+#---------------Section D - Table 3 - cross-validation------------------#
+
 rec = "agh"
 
 fitter<- function(train, test,method="glm",K=NULL,draws=NULL) { 
@@ -1114,6 +1157,8 @@ Leaving out random patients would be incorrect. Patients share a practice effect
 
 ```{r}
 #| include: false
+
+#---------------Section C - Estimand Tables------------------#
 tab_columns <- c("method", "bias", "bias_mcse", "emp_se","emp_se_mcse", "coverage", "coverage_mcse")
 
 performance_table <- function(results, param) {
