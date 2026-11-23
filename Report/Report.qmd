@@ -93,7 +93,7 @@ rownames(tab) <- NULL
 knitr::kable(tab, booktabs = TRUE, align = "lrrrrr")
 ```
 
-Notice in @tbl-tests that all `r tab$Checks[tab$File == "Total"]` pass as pass as required.
+Notice in @tbl-tests that all `r tab$Checks[tab$File == "Total"]` pass as required.
 
 # Part B
 
