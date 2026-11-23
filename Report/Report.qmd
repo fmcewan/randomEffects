@@ -808,7 +808,7 @@ coverage_plot(final, "beta1")
 coverage_plot(final, "sigma")
 ```
 
-We ran $1100$ replicates per scenario. All fits converged except two `laplace` fits ($m=2$ and $\sigma=1.5$, as well as $m=5$ and $\sigma=0.5$), which are excluded from those cells. @tbl-beta and @tbl-sigma give bias, empirical standard error and coverage for $\beta_1$ and $\sigma$, and are included in the appendix. @fig-beta-coverage and @fig-sigma-coverage show coverage, and @fig-c3-time provides time per fit.
+We ran $1100$ replicates per scenario. All fits converged except two `laplace` fits ($m=2$ and $\sigma=1.5$, as well as $m=5$ and $\sigma=0.5$), which are excluded from those cells. @tbl-beta and @tbl-sigma give bias, empirical standard error and coverage for $\beta_1$ and $\sigma$, and are included in @sec-appendix. @fig-beta-coverage and @fig-sigma-coverage show coverage, and @fig-c3-time provides time per fit.
 
 ### Coverage of $\beta_1$
 
@@ -1102,7 +1102,7 @@ knitr::kable(d2_tab, digits = 2, col.names = c("Model", "CV score", "SE"))
 
 Leaving out random patients would be incorrect. Patients share a practice effect, so practice-mates in the training set would leak information about held-out patients, making scores over-optimistic, especially for the random-intercept model. Folds would also no longer be independent, invalidating the SE, and since $\sum_j \log L_j$ is defined per practice, each practice must stay in one fold.
 
-# Appendix
+# Appendix {#sec-appendix}
 
 ## Simulation-study results tables
 
