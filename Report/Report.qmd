@@ -189,7 +189,7 @@ print(p20)
 print(p2)
 ```
 
-In @fig-b1-1 `Gauss-Hermite (gh)` and `Adaptive Gauss-Hermite (agh)` error's generally decrease as the number of integration nodes $K$ increases. `laplace` does not use integration nodes, but rather the mode and curvature so its error does not change for different values of $K$.
+In @fig-b1-1 `Gauss-Hermite (gh)` and `Adaptive Gauss-Hermite (agh)` errors generally decrease as the number of integration nodes $K$ increases. `laplace` does not use integration nodes, but rather the mode and curvature so its error does not change for different values of $K$.
 
 Every additional observation $m$ adds another log-likelihood contribution to $h_j(u)$ concentrating the function around its mode. This negatively impacts the accuracy of `gh`, which places its nodes according to the normal weighting function (centered at zero). Its errors are lower for $m=2$ in @fig-b1-2 than in the $m=20$ case @fig-b1-1. `agh` , by contrast, is able to adjust the location and scale of its nodes to the integrand, using its mode and local curvature. `laplace` performed poorly overall, as it uses a Gaussian approximation - failing to capture skewness.
 
@@ -899,7 +899,7 @@ ggplot(time_df, aes(factor(m), mean, colour = method, group = method)) +
 
 ## C4 - Recommendations {#sec-c4}
 
-We recommend `agh` ($K=7$) as the default. Across all six scenarios it was never the worst method, and its cost is modest (@fig-c3-time). Like `laplace`, `agh` uses each practice's mode and curvature, but it shifts and scales several quadrature points around the peak and evaluates the actual integrand there, so it captures more of the shape and had the lowest error in @fig-b1. The alternatives are only acceptable in some settings.
+We recommend `agh` ($K=7$) as the default. Across all six scenarios its bias and coverage were never clearly worse than other methods (@fig-c3-time). Like `laplace`, `agh` uses each practice's mode and curvature, but it shifts and scales several quadrature points around the peak and evaluates the actual integrand there, so it captures more of the shape and had the lowest error in @fig-b1. The alternatives though are acceptable in some settings.
 
 **Small clusters, large** $\sigma$ ($m=2$, $\sigma=1.5$): avoid `laplace`. Its empirical SE was $1.39$ for $\beta_1$ (against $0.44$ to $0.59$ for the others) and $3.57$ for $\sigma$, and its $\beta_1$ interval under-covered ($0.934$). With only two binary observations, $h_j(u)$ is skewed, but `laplace` approximates it with a normal shape around its peak, so it misses this skewness.
 
