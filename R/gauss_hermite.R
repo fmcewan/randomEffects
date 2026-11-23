@@ -150,7 +150,7 @@ cluster_integral <- function(theta, cd, j){
   #drop == FALSE keeps X as a matrix
   
   #Integrate over the random effect u
-  result <- integrate(
+  result <- stats::integrate(
     function(u){
       linear_predictor <- outer(as.vector(X%*%beta),u, "+")
       #each row of linear_predictor is an observation and each column represents a different random effect

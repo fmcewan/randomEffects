@@ -34,7 +34,7 @@ J = 3,
 cluster_size = c(2,2,2)
 )
 example_K <- 4
-gh(example_theta, example_data, example_K)
+gh(example_theta, example_cd, example_K)
 
 
 }

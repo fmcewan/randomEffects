@@ -99,11 +99,11 @@ rint_sim <- function(J, m, beta, sigma){
   
   #Generating the random intercepts for each cluster. 1 per cluster.
   #Taking exponential of sigma as the sigma provided has already been reparameterised to log(sigma)
-  u <- rnorm(J, mean = 0, sd = exp(sigma))
+  u <- stats::rnorm(J, mean = 0, sd = exp(sigma))
   
   #Generating the covariates. One covariate per observation.
   #mean = 0 and sd = 1 so utilising rnorm's default
-  x <- rnorm(J*m)
+  x <- stats::rnorm(J*m)
   
   #Building the design matrix
   X <- cbind(intercept = 1, x = x)
@@ -115,7 +115,7 @@ rint_sim <- function(J, m, beta, sigma){
   p <- plogis(drop(X %*% beta) + u[group])
   
   #Generating the binary reponses
-  y <- rbinom(J*m, size = 1, prob = p)
+  y <- stats::rbinom(J*m, size = 1, prob = p)
   
   #returning an output 'cd' in line with expected input of other functions
   

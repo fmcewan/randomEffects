@@ -1,5 +1,0 @@
-library(randomEffects)
-source("R/analysis/simulation_study.R")
-t <- system.time(study <- run_study(1100))
-saveRDS(study, "study.rds")
-saveRDS(t, "study_time.rds")
