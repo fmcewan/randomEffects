@@ -31,7 +31,7 @@ library(ggplot2)
 
 # GenAI declaration
 
-We declare that parts of this submission incorporate contributions from GenAI software and that the use of GenAI aligns with acceptable use as outlined in University policy and in the module and assignment guidance and is consistent with good academic practice. The tools used were Claude AI, Chagpt, Copilot by separate members.
+We declare that parts of this submission incorporate contributions from GenAI software and that the use of GenAI aligns with acceptable use as outlined in University policy and in the module and assignment guidance and is consistent with good academic practice. The tools used were Claude AI, ChatGPT, Copilot by separate members.
 
 # Part A {#sec-A}
 
@@ -250,7 +250,7 @@ profile_df <- data.frame(
 #| fig-cap: "Importance sampling estimate of the log-likelihood ($m = 20$, 200 repetitions per $R$)"
 #| fig-subcap:
 #|   - "Bias, with $\\pm 2$ Monte Carlo SE bars; dashed line is the Jensen prediction $-\\mathrm{SE}^2/2$"
-  #|   - "SD across repetitions vs the package's mean reported MC SE"
+#|   - "SD across repetitions vs the package's mean reported MC SE"
 #| layout-ncol: 2
 #| echo: false
 
@@ -629,7 +629,7 @@ If a fit needed hundreds of likelihood evaluations, `gh` would be attractive as 
 
 **Methods:** `laplace`, `gh` with $K = 10$, `agh` with $K = 7$, and `is` with $R = 100$ draws, held fixed throughout each fit (see B2). Each is fitted using `fit_rint()` with BFGS, with standard errors from the numerical Hessian.
 
-**Performance measures**: bias and empirical SE for $\beta_1$ and $\sigma$, which together measure accuracy and coverage of the nominal 95% Wald interval (for $\sigma$, constructed on the log scale), which assesses whether the Hessian-based standard errors can be trusted. Failure rate and computing time are also reported, every measure is accompanied by its Monte Carlo SE.
+**Performance measures**: bias and empirical SE for $\beta_1$ and $\sigma$, which together measure accuracy and coverage of the nominal 95% Wald interval (for $\sigma$, constructed on the log scale and back-transformed), which assesses whether the Hessian-based standard errors can be trusted. Failure rate and computing time are also reported, every measure is accompanied by its Monte Carlo SE.
 
 ### C1.1 Treatment of failures
 
