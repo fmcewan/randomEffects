@@ -808,7 +808,7 @@ coverage_plot(final, "beta1")
 coverage_plot(final, "sigma")
 ```
 
-We ran $1100$ replicates per scenario. All fits converged except two `laplace` fits ($m=2$ and $\sigma=1.5$, as well as $m=5$ and $\sigma=0.5$), which are excluded from those cells. @tbl-beta and @tbl-sigma give bias, empirical standard error and coverage for $\beta_1$ and $\sigma$, @fig-beta-coverage and @fig-sigma-coverage show coverage, and @fig-c3-time provides time per fit.
+We ran $1100$ replicates per scenario. All fits converged except two `laplace` fits ($m=2$ and $\sigma=1.5$, as well as $m=5$ and $\sigma=0.5$), which are excluded from those cells. @tbl-beta and @tbl-sigma give bias, empirical standard error and coverage for $\beta_1$ and $\sigma$, and are included in the appendix. @fig-beta-coverage and @fig-sigma-coverage show coverage, and @fig-c3-time provides time per fit.
 
 ### Coverage of $\beta_1$
 
@@ -821,54 +821,6 @@ The picture for $\sigma$ is less even (@tbl-sigma, @fig-sigma-coverage). At $m=2
 ### Timing
 
 `gh` and `laplace` were the fastest methods at $m=2$ and $m=5$ ($0.43$ to $0.58$s per fit), with `agh` about twice as slow and `is` being the slowest, taking $0.99$s at $m=2$ and $1.49$s at $m=5$ (@fig-c3-time). By $m=20$, the gap between `laplace`, `gh` and `agh` had mostly closed ($0.97$, $1.01$ and $1.06$s), while `is` was still more than twice as slow as the others at $2.52$s. Run time grew with $m$ for `gh`, `is` and `laplace`; `agh`, however, did not rise consistently with $m$ ($0.92$, $0.80$, $1.06$s). The study ran parallel on 15 workers, so the times included some slowdown from competing workers.
-
-```{r}
-#| include: false
-tab_columns <- c("method", "bias", "bias_mcse", "emp_se", "coverage", "coverage_mcse")
-
-performance_table <- function(results, param) {
-  
-  methods <- c("laplace", "gh", "agh", "is")
-  
-  results <- results[results$param == param, ]
-  results$method <- factor(results$method, levels = methods)
-  results <- results[order(results$sigma, results$m, results$method), ]
-  results[, c("m", "sigma", tab_columns)]
-  
-}
-```
-
-```{r}
-#| label: tbl-beta
-#| tbl-cap: "Performance for $\\beta_1$ by cluster size"
-#| tbl-subcap:
-#|   - "m = 2"
-#|   - "m = 5"
-#|   - "m = 20"
-#| echo: false
-#| tbl-pos: "H"
-
-tab <- performance_table(final, "beta1")
-knitr::kable(tab[tab$m == 2,  -1], row.names = FALSE, digits = 3)
-knitr::kable(tab[tab$m == 5,  -1], row.names = FALSE, digits = 3)
-knitr::kable(tab[tab$m == 20, -1], row.names = FALSE, digits = 3)
-```
-
-```{r}
-#| label: tbl-sigma
-#| tbl-cap: "Performance for $\\sigma$ by cluster size"
-#| tbl-subcap:
-#|   - "m = 2"
-#|   - "m = 5"
-#|   - "m = 20"
-#| echo: false
-#| tbl-pos: "H"
-
-tab <- performance_table(final, "sigma")
-knitr::kable(tab[tab$m == 2,  -1], row.names = FALSE, digits = 3)
-knitr::kable(tab[tab$m == 5,  -1], row.names = FALSE, digits = 3)
-knitr::kable(tab[tab$m == 20, -1], row.names = FALSE, digits = 3)
-```
 
 ```{r}
 #| label: fig-c3-time
@@ -1151,6 +1103,58 @@ knitr::kable(d2_tab, digits = 2, col.names = c("Model", "CV score", "SE"))
 Leaving out random patients would be incorrect. Patients share a practice effect, so practice-mates in the training set would leak information about held-out patients, making scores over-optimistic, especially for the random-intercept model. Folds would also no longer be independent, invalidating the SE, and since $\sum_j \log L_j$ is defined per practice, each practice must stay in one fold.
 
 # Appendix
+
+## Simulation-study results tables
+
+```{r}
+#| include: false
+tab_columns <- c("method", "bias", "bias_mcse", "emp_se", "coverage", "coverage_mcse")
+
+performance_table <- function(results, param) {
+  
+  methods <- c("laplace", "gh", "agh", "is")
+  
+  results <- results[results$param == param, ]
+  results$method <- factor(results$method, levels = methods)
+  results <- results[order(results$sigma, results$m, results$method), ]
+  results[, c("m", "sigma", tab_columns)]
+  
+}
+```
+
+```{r}
+#| label: tbl-beta
+#| tbl-cap: "Performance for $\\beta_1$ by cluster size"
+#| tbl-subcap:
+#|   - "m = 2"
+#|   - "m = 5"
+#|   - "m = 20"
+#| echo: false
+#| tbl-pos: "H"
+
+tab <- performance_table(final, "beta1")
+knitr::kable(tab[tab$m == 2,  -1], row.names = FALSE, digits = 3)
+knitr::kable(tab[tab$m == 5,  -1], row.names = FALSE, digits = 3)
+knitr::kable(tab[tab$m == 20, -1], row.names = FALSE, digits = 3)
+```
+
+```{r}
+#| label: tbl-sigma
+#| tbl-cap: "Performance for $\\sigma$ by cluster size"
+#| tbl-subcap:
+#|   - "m = 2"
+#|   - "m = 5"
+#|   - "m = 20"
+#| echo: false
+#| tbl-pos: "H"
+
+tab <- performance_table(final, "sigma")
+knitr::kable(tab[tab$m == 2,  -1], row.names = FALSE, digits = 3)
+knitr::kable(tab[tab$m == 5,  -1], row.names = FALSE, digits = 3)
+knitr::kable(tab[tab$m == 20, -1], row.names = FALSE, digits = 3)
+```
+
+## Code
 
 ```{r}
 #| label: appendix
