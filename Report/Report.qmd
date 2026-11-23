@@ -343,7 +343,7 @@ b2_fits_subset<-b2_fits[, c("fit", "error")]
 
 ```{r}
 #| label: tbl-b2-fits
-#| tbl-cap: "Five IS fits (R = 100) drawing fresh draws at every likelihood evaluation, compared with one fit using fixed draws. True values: $\\beta_0 = -0.5$, $\\beta_1 = 1$, $\\sigma = 1.5$. Convergence code 0 = converged."
+#| tbl-cap: "Five IS fits (R = 100) drawing fresh draws at every likelihood evaluation, compared with one fit using fixed draws. Showing fresh draws error in all 5 cases"
 #| echo: false
 
 tab <- b2_fits_subset
