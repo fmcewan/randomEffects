@@ -115,7 +115,7 @@ rint_sim <- function(J, m, beta, sigma){
   p <- plogis(drop(X %*% beta) + u[group])
   
   #Generating the binary reponses
-  y <- rbinom(J*m, size = 1, prob = p)
+  y <- stats::rbinom(J*m, size = 1, prob = p)
   
   #returning an output 'cd' in line with expected input of other functions
   
