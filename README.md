@@ -32,7 +32,8 @@ Gauss–Hermite quadrature:
 ```r
 library(randomEffects)
 
-cd  <- cluster_data(y, x, group)
+sim <- rint_sim(50, 5, c(-0.5, 1), log(1.5))   # sigma is given on the log scale
+cd  <- cluster_data(sim$y, sim$X, factor(sim$group))
 fit <- fit_rint(cd, method = "agh", K = 7)
 fit$par
 ```
@@ -58,7 +59,7 @@ The report needs some extra packages (listed under `Suggests` in
    ```
 3. Render the report:
    ```bash
-   quarto render Report.qmd
+   quarto render Report/Report.qmd
    ```
 
 Seeds are set in the report, so the results are reproducible.
@@ -75,4 +76,4 @@ Seeds are set in the report, so the results are reproducible.
 
 ## Authors
 
-Group 5: <Lourens Francois Janse van Rensburg, Helena Rothery , Fraser McEwan, Robin Ferguson, Andrea Totaro>
+Group 5: Lourens Francois Janse van Rensburg, Helena Rothery, Fraser McEwan, Robin Ferguson, Andrea Totaro

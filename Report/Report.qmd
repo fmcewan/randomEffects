@@ -646,7 +646,7 @@ ggplot(mt_long, aes(J, ms, colour = finder)) +
 
 The vectorised `cluster_modes()` was `r round(b3$mode_timings$speed_up[1], 1)`×, `r round(b3$mode_timings$speed_up[2], 1)`× and `r round(b3$mode_timings$speed_up[3], 1)`× faster than calling `optimize()` once per cluster for $J = 50, 200$ and $800$ (@fig-b3-modes).
 
-If a fit needed hundreds of likelihood evaluations, `gh` would be attractive as one of the cheapest methods per evaluation (@fig-b3-loglik). However, @fig-b1 showed it loses accuracy as clusters grow, and in Part C this led to under-coverage for $\sigma$ at $m=20$. It is therefore a reasonable trade-off only for small clusters; otherwise the small extra cost of `agh` is worth paying.
+If a fit needed hundreds of likelihood evaluations, `gh` would be attractive as one of the cheapest methods per evaluation (@fig-b3-loglik). However, @fig-b1 showed it loses accuracy as clusters grow, and in Part C this led to under-coverage for $\sigma$ at $m=20$. It is therefore a reasonable trade-off only for small clusters and small $\sigma$; otherwise the small extra cost of `agh` is worth paying.
 
 # Part C
 
@@ -897,7 +897,7 @@ We recommend `agh` ($K=7$) as the default. Across all six scenarios its bias and
 
 **Large clusters, large** $\sigma$ ($m=20$, $\sigma=1.5$): avoid `gh`, whose coverage for $\sigma$ fell to $0.918$ while the others stayed at $0.945$. As $m$ grows, $h_j(u)$ concentrates around a mode away from zero, but `gh` places its nodes around zero, so it struggles to capture this.
 
-**Moderate clusters (**$m=5$): all four methods performed essentially identically for $\beta_1$, but `laplace` underestimates $\sigma$ - so the cheaper `laplace` or `gh` would also be acceptable.
+**Moderate clusters (**$m=5$): all four methods performed essentially identically for $\beta_1$, but `laplace` underestimates $\sigma$ - so the cheaper `gh` would also be acceptable.
 
 **Small clusters, small** $\sigma$ ($m=2$, $\sigma=0.5$): coverage for $\sigma$ was about $0.88$ for `gh`, `agh` and `is`. Since these three agree closely, this most likely reflects the Wald interval for $\sigma$ performing poorly with little data per cluster, rather than integration error.
 
