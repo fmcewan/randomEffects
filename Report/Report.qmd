@@ -946,7 +946,7 @@ ggplot(gp, aes(age, attended)) +
   theme_bw()
 ```
 
-Notice we are in a case where we have `r length(unique(gp$practice))` practices with between `r min(table(gp$practice))` and `r max(table(gp$practice))` patients each (median `r median(table(gp$practice))`), closest to the $m = 5$ scenario in Part C.
+Practices have 2–12 patients (median 8) and $\hat\sigma \approx 1.7$, closest to Part C's $m = 5$, $\sigma = 1.5$ scenario, where `agh` had small bias and near-nominal coverage (@tbl-beta, @tbl-sigma), so we use `agh` ($K = 7$).
 
 ```{r}
 #| label: d1-fit
