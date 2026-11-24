@@ -53,15 +53,15 @@ In our package we have data functions:
 
 - `cluster_data(y, X, group)`: prepares and validates the data before calculating the marginal log-likelihood
 
-- `cluster_modes()` finds where `laplace` 's peak is and its curvature, which describes its width.
+- `cluster_modes()` finds each practice's integrand peak and its curvature, which describes the peak's width.
 
   - Note `cluster_modes` uses Newton’s method which is suitable here because each cluster’s log-integrand has a strictly negative second derivative, so will give a unique mode. A zero gradient, therefore, identifies that mode rather than a minimum or saddle point. Backtracking safeguards the updates by shortening steps that do not sufficiently improve the objective. 
 
-- `fitrint()`  - fits random intercept model
+- `fitrint()` - fits random intercept model
 
-- `marginal_loglik()`  - adds up per cluster log-likelihoods
+- `marginal_loglik()` - adds up per cluster log-likelihoods
 
-- `summarise_study()`  - returns one row per scenario for results of simulation study
+- `summarise_study()` - returns one row per scenario for results of simulation study
 
 ## Approximation functions:
 
