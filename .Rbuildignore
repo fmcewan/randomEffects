@@ -1,3 +1,8 @@
 ^LICENSE\.md$
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^Report\.qmd$
+^results$
+^raw_data$
+^Report\.pdf$
+^Report$
