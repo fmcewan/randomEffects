@@ -897,7 +897,7 @@ We recommend `agh` ($K=7$) as the default. Across all six scenarios its bias and
 
 **Large clusters, large** $\sigma$ ($m=20$, $\sigma=1.5$): avoid `gh`, whose coverage for $\sigma$ fell to $0.918$ while the others stayed at $0.945$. As $m$ grows, $h_j(u)$ concentrates around a mode away from zero, but `gh` places its nodes around zero, so it struggles to capture this.
 
-**Moderate clusters (**$m=5$): all four methods performed essentially identically, so the cheaper `laplace` or `gh` would also be acceptable.
+**Moderate clusters (**$m=5$): all four methods performed essentially identically for $\beta_1$, but `laplace` underestimates $\sigma$ - so the cheaper `laplace` or `gh` would also be acceptable.
 
 **Small clusters, small** $\sigma$ ($m=2$, $\sigma=0.5$): coverage for $\sigma$ was about $0.88$ for `gh`, `agh` and `is`. Since these three agree closely, this most likely reflects the Wald interval for $\sigma$ performing poorly with little data per cluster, rather than integration error.
 
@@ -1029,11 +1029,11 @@ knitr::kable(
 
 ## D1 - Analysis
 
-All four methods give very similar estimates (@tbl-d1): `agh` and `is` agree to two decimal places, and `laplace` and `gh` differ by at most $0.02$ in $\beta_0$ and $\beta_1$, well within the confidence intervals. The only visible differences are in $\hat\sigma$, where `laplace` is lowest ($1.64$) and `gh` highest with the widest interval ($1.77$), consistent with the integration error seen in @sec-c3.
+All four methods give very similar estimates (@tbl-d1). Differences appear only in $\hat\sigma$: `laplace` is lowest ($1.64$), matching its negative $\sigma$ bias at $m = 5$ (@tbl-sigma), and `gh` is highest with the widest interval ($1.77$).
 
-Exponentiating $\hat\beta_1$, a one SD increase in age multiplies a patient's odds of attending by `r sprintf("%.2f", exp(fits$agh$par[2]))` (95% CI excludes 1), a clear positive effect as expected from @fig-d1-eda-2.
+A one SD increase in age multiplies the odds of attending by $2.40$ (95% CI $1.77$ to $3.25$), a clear positive effect (@fig-d1-eda).
 
-The between-practice SD $\hat\sigma =$ `r round(exp(fits$agh$par[3]), 2)` is large on the log-odds scale, about twice the age effect, so which practice a patient attends matters substantially, as @fig-d1-eda-1 suggested. @tbl-SD-interp shows how much the predicted attendance probability differs between practices one SD above and below average.
+$\hat\sigma = 1.69$ is large, about twice the age coefficient on the log-odds scale: a patient of average age has predicted attendance probability $0.83$ at a practice one SD above average but only $0.14$ one SD below (@tbl-SD-interp), so the practice matters substantially.
 
 ```{r}
 #| label: tbl-SD-interp
